@@ -39,7 +39,7 @@
             100% { transform: translateY(110vh) translateX(25px) rotate(360deg); }
         }
 
-        /* --- Navbar --- */
+        /* --- Navbar & Dropdown --- */
         nav {
             width: 100%;
             padding: 10px 50px;
@@ -52,8 +52,49 @@
             top: 0;
             z-index: 100;
         }
+
+        .left-nav { display: flex; align-items: center; gap: 20px; }
+
+        .dropdown { position: relative; display: inline-block; }
+        .dropbtn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .dropbtn:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #0d1117;
+            min-width: 220px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+            z-index: 1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .dropdown-content a {
+            color: #ccc;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.85rem;
+            transition: 0.3s;
+        }
+        .dropdown-content a:hover { background-color: #161b22; color: #fff; }
+        .dropdown:hover .dropdown-content { display: block; }
+
         .logo { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.2rem; }
         .logo img { height: 40px; width: 40px; border-radius: 50%; }
+
         .nav-links { display: flex; gap: 25px; list-style: none; }
         .nav-links a { color: #ccc; text-decoration: none; font-size: 0.9rem; transition: 0.3s; }
         .nav-links a:hover { color: #fff; }
@@ -180,10 +221,24 @@
     <div class="background"></div>
 
     <nav>
-        <div class="logo">
-            <img src="https://cdn.discordapp.com/attachments/1457594773010518086/1480537990446190726/copilot_image_1761965106943.jpg?ex=69b20433&is=69b0b2b3&hm=e1dcf4b1965e75718b8dc2a699839f1a49e5c653976a35c538af822e7a7ec2c9&" alt="CoreMMC Logo">
-            CoreMMC
+        <div class="left-nav">
+            <div class="dropdown">
+                <button class="dropbtn">Panels <i class="fas fa-caret-down"></i></button>
+                <div class="dropdown-content">
+                    <a href="https://supergmt95.github.io/minecraft-hosting/"><i class="fas fa-home"></i> Home Panel</a>
+                    <a href="#"><i class="fas fa-gamepad"></i> Game Panel</a>
+                    <a href="#"><i class="fas fa-file-invoice-dollar"></i> Billing Panel</a>
+                    <a href="#"><i class="fas fa-cube"></i> Minecraft hosting Panel</a>
+                    <a href="https://discord.gg/SvQSv5E53"><i class="fas fa-headset"></i> Contact support</a>
+                </div>
+            </div>
+
+            <div class="logo">
+                <img src="https://cdn.discordapp.com/attachments/1457594773010518086/1480537990446190726/copilot_image_1761965106943.jpg?ex=69b20433&is=69b0b2b3&hm=e1dcf4b1965e75718b8dc2a699839f1a49e5c653976a35c538af822e7a7ec2c9&" alt="CoreMMC Logo">
+                ⚡ CoreMMC
+            </div>
         </div>
+
         <ul class="nav-links">
             <li><a href="#">Features</a></li>
             <li><a href="#">Hosting</a></li>
@@ -233,11 +288,12 @@
         <div class="pricing-grid">
             <div class="card">
                 <h3>VPS Hosting</h3>
-                <div class="price">Starts at <span style="color: #2188ff;">₹45</span> / GB</div>
+                <div class="price">Starts at <span style="color: #2188ff;">₹45</span> / GB RAM</div>
                 <ul class="features">
                     <li><i class="fas fa-terminal"></i> Full Root Access</li>
-                    <li><i class="fas fa-network-wired"></i> 1 Gbps Network</li>
-                    <li><i class="fas fa-hdd"></i> Gen4 NVMe</li>
+                    <li><i class="fas fa-network-wired"></i> 1 Gbps Network Port</li>
+                    <li><i class="fas fa-hdd"></i> Gen4 NVMe Storage</li>
+                    <li><i class="fas fa-shield-alt"></i> Dedicated IPv4</li>
                 </ul>
                 <button class="card-btn">Configure VPS</button>
             </div>
@@ -245,22 +301,24 @@
             <div class="card popular">
                 <span class="badge">POPULAR</span>
                 <h3>Minecraft</h3>
-                <div class="price">Starts at <span style="color: #a371f7;">₹25</span> / GB</div>
+                <div class="price">Starts at <span style="color: #a371f7;">₹25</span> / GB RAM</div>
                 <ul class="features">
-                    <li><i class="fas fa-users"></i> Unlimited Slots</li>
-                    <li><i class="fas fa-bolt"></i> Ryzen-Powered</li>
-                    <li><i class="fas fa-shield-alt"></i> Dedicated IP</li>
+                    <li><i class="fas fa-users"></i> Unlimited Player Slots</li>
+                    <li><i class="fas fa-columns"></i> Pterodactyl Panel</li>
+                    <li><i class="fas fa-bolt"></i> Instant Setup</li>
+                    <li><i class="fas fa-shield-alt"></i> Dedicated IP Available</li>
                 </ul>
                 <button class="card-btn active">Launch Server</button>
             </div>
 
             <div class="card">
                 <h3>Bot Hosting</h3>
-                <div class="price">Starts at <span style="color: #e3b341;">₹20</span> / GB</div>
+                <div class="price">Starts at <span style="color: #e3b341;">₹20</span> / GB RAM</div>
                 <ul class="features">
-                    <li><i class="fas fa-code"></i> Python & Node.js</li>
+                    <li><i class="fas fa-code"></i> Supports Java, Python & Node</li>
                     <li><i class="fas fa-clock"></i> 24/7 Uptime</li>
-                    <li><i class="fas fa-folder"></i> FTP Access</li>
+                    <li><i class="fas fa-folder"></i> Full FTP Access</li>
+                    <li><i class="fas fa-moon"></i> No Sleep Mode</li>
                 </ul>
                 <button class="card-btn">Start Bot</button>
             </div>
@@ -269,9 +327,10 @@
                 <h3>Web Hosting</h3>
                 <div class="price"><span style="color: #3fb950;">Free</span> to Start</div>
                 <ul class="features">
-                    <li><i class="fas fa-lock"></i> Free SSL</li>
-                    <li><i class="fas fa-columns"></i> CyberPanel</li>
-                    <li><i class="fas fa-envelope"></i> Pro Email</li>
+                    <li><i class="fas fa-lock"></i> Free SSL Certificate</li>
+                    <li><i class="fas fa-bolt"></i> LiteSpeed Powered</li>
+                    <li><i class="fas fa-columns"></i> CyberPanel Console</li>
+                    <li><i class="fas fa-envelope"></i> Professional Email</li>
                 </ul>
                 <button class="card-btn">Host Website</button>
             </div>

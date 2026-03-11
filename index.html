@@ -42,7 +42,7 @@
         /* --- Navbar --- */
         nav {
             width: 100%;
-            padding: 20px 50px;
+            padding: 10px 50px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -52,16 +52,17 @@
             top: 0;
             z-index: 100;
         }
-        .logo { font-size: 1.5rem; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.2rem; }
+        .logo img { height: 40px; width: 40px; border-radius: 50%; }
         .nav-links { display: flex; gap: 25px; list-style: none; }
         .nav-links a { color: #ccc; text-decoration: none; font-size: 0.9rem; transition: 0.3s; }
         .nav-links a:hover { color: #fff; }
         .nav-btns { display: flex; gap: 15px; }
 
-        /* --- Hero Section (From Image) --- */
+        /* --- Hero Section --- */
         .hero {
             text-align: center;
-            padding: 100px 20px;
+            padding: 80px 20px;
             max-width: 900px;
             z-index: 2;
         }
@@ -75,7 +76,7 @@
             display: inline-block;
             margin-bottom: 20px;
         }
-        .hero h1 { font-size: 4rem; font-weight: 800; line-height: 1.1; }
+        .hero h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; }
         .hero h1 span {
             background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
             -webkit-background-clip: text;
@@ -86,27 +87,70 @@
         .hero-btns { display: flex; flex-direction: column; gap: 15px; align-items: center; margin-top: 30px; }
         .btn-primary { 
             background: linear-gradient(90deg, #3a7bd5, #00d2ff); 
-            width: 300px; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 1.1rem;
-            color: white; text-decoration: none; transition: 0.3s; box-shadow: 0 0 20px rgba(58, 123, 213, 0.4);
+            width: 300px; padding: 15px; border-radius: 12px; font-weight: bold;
+            color: white; text-decoration: none; text-align: center;
         }
         .btn-secondary { 
             background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
             width: 300px; padding: 15px; border-radius: 12px; font-weight: bold;
-            color: white; text-decoration: none; transition: 0.3s;
+            color: white; text-decoration: none; text-align: center;
         }
-        .btn-primary:hover, .btn-secondary:hover { transform: scale(1.05); filter: brightness(1.2); }
+
+        /* --- Global Network Section (From Photo) --- */
+        .network-section {
+            width: 100%;
+            max-width: 1100px;
+            text-align: center;
+            padding: 100px 20px;
+            z-index: 2;
+        }
+        .network-header h2 { font-size: 2.5rem; }
+        .network-header span { color: #2188ff; }
+        .network-header p { color: #8b949e; margin: 15px auto; max-width: 700px; }
+
+        .location-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 50px;
+        }
+        .loc-card {
+            background: rgba(22, 27, 34, 0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .loc-card img { width: 30px; margin-bottom: 10px; }
+        .loc-name { font-weight: bold; display: block; margin-bottom: 5px; }
+        .latency { font-size: 0.85rem; font-weight: bold; }
+        
+        /* Latency Colors */
+        .lat-green { color: #3fb950; }
+        .lat-blue { color: #2188ff; }
+        .lat-purple { color: #a371f7; }
+        .lat-pink { color: #f85149; }
+        .lat-gray { color: #8b949e; }
+
+        /* Globe GIF container */
+        .globe-container {
+            margin-top: 60px;
+            display: flex;
+            justify-content: center;
+        }
+        .globe-gif {
+            width: 100%;
+            max-width: 500px;
+            filter: drop-shadow(0 0 30px rgba(33, 136, 255, 0.3));
+        }
 
         /* --- Hosting Section --- */
         .hosting-section { max-width: 1100px; width: 100%; padding: 80px 20px; z-index: 2; }
-        .section-header { margin-bottom: 40px; }
-        .section-header h2 { font-size: 2.5rem; }
-
         .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
         }
-
         .card {
             background: rgba(22, 27, 34, 0.7);
             backdrop-filter: blur(15px);
@@ -114,27 +158,7 @@
             border-radius: 20px;
             padding: 30px;
             position: relative;
-            transition: 0.3s;
         }
-        .card:hover { transform: translateY(-10px); border-color: rgba(163, 113, 247, 0.5); }
-        .popular { border: 2px solid #a371f7; }
-        .badge {
-            position: absolute; top: 15px; right: 15px;
-            background: #a371f7; font-size: 10px; padding: 4px 10px; border-radius: 20px;
-        }
-
-        .price { font-size: 1.1rem; margin: 20px 0; color: #8b949e; }
-        .price span { font-size: 2.2rem; font-weight: bold; color: #fff; }
-
-        .features { list-style: none; margin-bottom: 30px; }
-        .features li { margin-bottom: 12px; font-size: 0.9rem; color: #d1d5db; display: flex; align-items: center; }
-        .features i { margin-right: 12px; color: #58a6ff; }
-
-        .card-btn {
-            width: 100%; padding: 12px; border-radius: 10px; border: none;
-            cursor: pointer; font-weight: bold; transition: 0.3s; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid #444;
-        }
-        .card-btn.active { background: #a371f7; border: none; }
     </style>
 </head>
 <body>
@@ -142,14 +166,16 @@
     <div class="background"></div>
 
     <nav>
-        <div class="logo">⚡ CoreMMC</div>
+        <div class="logo">
+            <img src="https://cdn.discordapp.com/attachments/1457594773010518086/1480537990446190726/copilot_image_1761965106943.jpg?ex=69b20433&is=69b0b2b3&hm=e1dcf4b1965e75718b8dc2a699839f1a49e5c653976a35c538af822e7a7ec2c9&" alt="CoreMMC Logo">
+            CoreMMC
+        </div>
         <ul class="nav-links">
             <li><a href="#">Features</a></li>
             <li><a href="#">Hosting</a></li>
             <li><a href="#">Status</a></li>
         </ul>
         <div class="nav-btns">
-            <a href="#" style="color: #ccc; text-decoration: none; padding-top: 5px;">Panels</a>
             <button style="background: #5865f2; border: none; padding: 8px 15px; border-radius: 5px; color: #fff; font-weight: bold;">Get Started</button>
         </div>
     </nav>
@@ -158,65 +184,45 @@
         <div class="promo-badge">🚀 CoreMMC || India's Fastest Hosting</div>
         <h1>Premium Hosting<br><span>Built for Performance</span></h1>
         <p class="hero-desc">VPS • Game • Bot • Web Hosting<br>Smooth Performance • Zero Lag • Pure Stability</p>
-        
         <div class="hero-btns">
-            <a href="https://supergmt95.github.io/minecraft-hosting/" class="btn-primary">⚡ Back to Home Page</a>
+            <a href="https://discord.gg/SvQSv5E53" class="btn-primary">⚡ Back to Home Page</a>
             <a href="https://discord.gg/SvQSv5E53" class="btn-secondary">Contact Support</a>
         </div>
     </header>
 
-    <section class="hosting-section">
-        <div class="section-header">
-            <h2>Our Hosting Solutions</h2>
-            <p style="color: #8b949e;">Select the perfect infrastructure for your project.</p>
+    <section class="network-section">
+        <div class="network-header">
+            <h2>Explore Our <span>Global Network</span></h2>
+            <p>Deploy on our worldwide network for ultra-low latency. Our data centers are strategically positioned at major internet hubs.</p>
         </div>
 
+        <div class="location-grid">
+            <div class="loc-card"><img src="https://flagcdn.com/in.svg" alt="India"><span class="loc-name">Mumbai</span><span class="latency lat-green">5-20 ms</span></div>
+            <div class="loc-card"><img src="https://flagcdn.com/in.svg" alt="India"><span class="loc-name">Delhi</span><span class="latency lat-green">10-25 ms</span></div>
+            <div class="loc-card"><img src="https://flagcdn.com/in.svg" alt="India"><span class="loc-name">Hyderabad</span><span class="latency lat-green">15-30 ms</span></div>
+            <div class="loc-card"><img src="https://flagcdn.com/in.svg" alt="India"><span class="loc-name">Kolkata</span><span class="latency lat-gray">COMING SOON</span></div>
+            <div class="loc-card"><img src="https://flagcdn.com/sg.svg" alt="Singapore"><span class="loc-name">Singapore</span><span class="latency lat-blue">35-55 ms</span></div>
+            <div class="loc-card"><img src="https://flagcdn.com/ae.svg" alt="Dubai"><span class="loc-name">Dubai</span><span class="latency lat-purple">40-70 ms</span></div>
+            <div class="loc-card"><img src="https://flagcdn.com/de.svg" alt="Germany"><span class="loc-name">Frankfurt</span><span class="latency lat-purple">120-160 ms</span></div>
+            <div class="loc-card"><img src="https://flagcdn.com/us.svg" alt="USA"><span class="loc-name">Washington DC</span><span class="latency lat-pink">180-220 ms</span></div>
+        </div>
+
+        <div class="globe-container">
+            <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExemdvcmxwZG56cW1sZ2w1NGtrNGF0M3E4am1jMG52cnc4M3FuaG1sZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/wgHY9nSrlTMt2/giphy.gif" alt="Globe Animation" class="globe-gif">
+        </div>
+    </section>
+
+    <section class="hosting-section">
         <div class="pricing-grid">
             <div class="card">
-                <h3>VPS Hosting</h3>
-                <div class="price">Starts at <span style="color: #2188ff;">₹45</span> / GB</div>
-                <ul class="features">
-                    <li><i class="fas fa-terminal"></i> Full Root Access</li>
-                    <li><i class="fas fa-network-wired"></i> 1 Gbps Network</li>
-                    <li><i class="fas fa-hdd"></i> Gen4 NVMe</li>
-                </ul>
-                <button class="card-btn">Configure VPS</button>
-            </div>
-
-            <div class="card popular">
-                <span class="badge">POPULAR</span>
                 <h3>Minecraft</h3>
                 <div class="price">Starts at <span style="color: #a371f7;">₹25</span> / GB</div>
-                <ul class="features">
-                    <li><i class="fas fa-users"></i> Unlimited Slots</li>
+                <ul style="list-style: none; color: #ccc; font-size: 0.9rem;">
                     <li><i class="fas fa-bolt"></i> Ryzen-Powered</li>
-                    <li><i class="fas fa-shield-alt"></i> Dedicated IP</li>
+                    <li><i class="fas fa-shield-alt"></i> Zero Lag</li>
                 </ul>
-                <button class="card-btn active">Launch Server</button>
             </div>
-
-            <div class="card">
-                <h3>Bot Hosting</h3>
-                <div class="price">Starts at <span style="color: #e3b341;">₹20</span> / GB</div>
-                <ul class="features">
-                    <li><i class="fas fa-code"></i> Python & Node.js</li>
-                    <li><i class="fas fa-clock"></i> 24/7 Uptime</li>
-                    <li><i class="fas fa-folder"></i> FTP Access</li>
-                </ul>
-                <button class="card-btn">Start Bot</button>
             </div>
-
-            <div class="card">
-                <h3>Web Hosting</h3>
-                <div class="price"><span style="color: #3fb950;">Free</span> to Start</div>
-                <ul class="features">
-                    <li><i class="fas fa-lock"></i> Free SSL</li>
-                    <li><i class="fas fa-columns"></i> CyberPanel</li>
-                    <li><i class="fas fa-envelope"></i> Pro Email</li>
-                </ul>
-                <button class="card-btn">Host Website</button>
-            </div>
-        </div>
     </section>
 
     <script>
@@ -227,12 +233,10 @@
             snowflake.style.left = Math.random() * 100 + 'vw';
             snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
             snowflake.style.opacity = Math.random();
-            snowflake.style.fontSize = Math.random() * 1.5 + 0.5 + 'em';
             document.body.appendChild(snowflake);
             setTimeout(() => snowflake.remove(), 5000);
         }
         setInterval(createSnowflake, 150);
     </script>
-
 </body>
 </html>

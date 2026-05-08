@@ -712,124 +712,42 @@
         }
         setInterval(createSnowflake, 150);
     </script>
-    <div id="coremmc-chat-wrapper" style="position: fixed; bottom: 30px; right: 30px; z-index: 99999; font-family: 'Poppins', sans-serif; color: white;">
-    
-    <button id="chat-toggle-btn" onclick="toggleCoreChat()" style="width: 60px; height: 60px; background: linear-gradient(135deg, #22c55e, #3b82f6); border: none; border-radius: 50%; cursor: pointer; box-shadow: 0 5px 20px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; transition: 0.3s; padding: 0; outline: none;">
-        <i class="fas fa-comments" style="font-size: 24px; color: white;"></i>
-    </button>
-
-    <div id="core-chat-box" style="display: none; width: 330px; height: 480px; background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; flex-direction: column; position: absolute; bottom: 80px; right: 0; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
-        
-        <div style="background: linear-gradient(135deg, #22c55e, #3b82f6); padding: 18px; display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 15px;">
-            <img src="https://i.ibb.co/KzF67sFZ/copilot-image-1761965106943.png" alt="CoreBot" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5);">
-            <div style="flex-grow: 1;">CoreMMC Assistant<br><span style="font-size: 11px; font-weight: normal; opacity: 0.8;">Online | AI Powered</span></div>
-            <button onclick="toggleCoreChat()" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 18px; padding: 0;"><i class="fas fa-times"></i></button>
-        </div>
-
-        <div id="core-messages" style="flex-grow: 1; padding: 20px; overflow-y: auto; font-size: 13px; color: #cbd5e1; scrollbar-width: thin; scrollbar-color: #334155 #0f172a;">
-            <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
-                <img src="https://i.ibb.co/KzF67sFZ/copilot-image-1761965106943.png" style="width: 24px; height: 24px; border-radius: 50%; margin-top: 2px;">
-                <div style="background: #1e293b; padding: 10px 14px; border-radius: 0 12px 12px 12px; max-width: 80%;">
-                    Hello! Main CoreMMC AI Assistant hoon. Minecraft hosting, VPS, ya Bot hosting ke baare mein kuch bhi poochiye.
-                </div>
-            </div>
-        </div>
-
-        <div style="padding: 15px; border-top: 1px solid #1e293b; background: rgba(0,0,0,0.2); display: flex; gap: 10px;">
-            <input type="text" id="coreUserInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)" style="flex-grow: 1; background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 10px; color: white; font-size: 13px; outline: none;">
-            <button onclick="sendCoreMessage()" style="background: #3b82f6; border: none; color: white; padding: 0 15px; border-radius: 10px; cursor: pointer; transition: 0.2s;"><i class="fas fa-paper-plane"></i></button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // === CHAT SYSTEM LOGIC ===
-
-    // !!! IMPORTANT: Paste your actual Google AI Studio API Key here !!!
-    const API_KEY = "AIzaSyCP_7LgXcC41dJkyhGrZ0E15zWmWVWQUMk"; 
-
-    function toggleCoreChat() {
-        const chatBox = document.getElementById('core-chat-box');
-        const toggleBtn = document.getElementById('chat-toggle-btn');
-        if (chatBox.style.display === 'none' || chatBox.style.display === '') {
-            chatBox.style.display = 'flex';
-            toggleBtn.style.transform = 'scale(0.8) rotate(90deg)';
-        } else {
-            chatBox.style.display = 'none';
-            toggleBtn.style.transform = 'scale(1) rotate(0deg)';
-        }
-    }
-
-    function handleKeyPress(e) {
-        if (e.key === 'Enter') {
-            sendCoreMessage();
-        }
-    }
+  <script>
+    const API_KEY = "AIzaSyCP_7LgXcC41dJkyhGrZ0E15zWmWVWQUMk"; // <--- Apni sahi key yahan dalo
 
     async function sendCoreMessage() {
         const inputField = document.getElementById('coreUserInput');
         const messagesDiv = document.getElementById('core-messages');
         const messageText = inputField.value.trim();
-
         if (messageText === "") return;
 
-        // Display User Message
-        const userMsgHTML = `
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
-                <div style="background: #3b82f6; color: white; padding: 10px 14px; border-radius: 12px 12px 0 12px; max-width: 80%; text-align: right;">
-                    ${messageText}
-                </div>
-            </div>`;
-        messagesDiv.innerHTML += userMsgHTML;
+        messagesDiv.innerHTML += `<div style="text-align:right; margin-bottom:10px;"><b>You:</b> ${messageText}</div>`;
         inputField.value = "";
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
-
-        // AI is thinking message
-        const thinkingId = 'thinking-' + Date.now();
-        const thinkingHTML = `
-            <div id="${thinkingId}" style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
-                <img src="https://i.ibb.co/KzF67sFZ/copilot-image-1761965106943.png" style="width: 24px; height: 24px; border-radius: 50%;">
-                <div style="background: #1e293b; padding: 10px 14px; border-radius: 0 12px 12px 12px; max-width: 80%; color: #64748b; font-style: italic;">
-                    Hmm...
-                </div>
-            </div>`;
-        messagesDiv.innerHTML += thinkingHTML;
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
         try {
-            // Call Gemini API (using older, safer version for client-side)
+            // API Call setup
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Tum CoreMMC hosting ke expert assistant ho. Customer support chat hai. Dosti se aur Hindi mein jawab do. Humara logo ImgBB par hai. User ne poochha: ${messageText}` }] }]
+                    contents: [{ parts: [{ text: messageText }] }]
                 })
             });
 
-            if (!response.ok) throw new Error("API Connection Failed");
-
             const data = await response.json();
-            const botResponse = data.candidates[0].content.parts[0].text;
-
-            // Remove 'Hmm...' and display actual bot response
-            document.getElementById(thinkingId).remove();
-
-            const botMsgHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
-                    <img src="https://i.ibb.co/KzF67sFZ/copilot-image-1761965106943.png" style="width: 24px; height: 24px; border-radius: 50%;">
-                    <div style="background: #1e293b; padding: 10px 14px; border-radius: 0 12px 12px 12px; max-width: 80%;">
-                        ${botResponse}
-                    </div>
-                </div>`;
-            messagesDiv.innerHTML += botMsgHTML;
+            
+            // Agar API error de rahi hai toh ye alert dikhayega
+            if (data.error) {
+                messagesDiv.innerHTML += `<div style="color:red;">Error: ${data.error.message}</div>`;
+            } else {
+                const botResponse = data.candidates[0].content.parts[0].text;
+                messagesDiv.innerHTML += `<div style="margin-bottom:10px; color:#60a5fa;"><b>Bot:</b> ${botResponse}</div>`;
+            }
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
         } catch (error) {
-            document.getElementById(thinkingId).remove();
-            messagesDiv.innerHTML += `<div style="color: #ef4444; font-size: 11px; text-align: center; margin-bottom: 15px;">Error: Bot responds nahi de pa raha. API Key check karein.</div>`;
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            messagesDiv.innerHTML += `<div style="color:red;">Network Error: Connection fail!</div>`;
         }
     }
-</script>
+  </script>
 </body>
 </html>

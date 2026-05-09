@@ -727,7 +727,6 @@
         font-family: 'Poppins', sans-serif;
     }
 
-    /* Chat Button (Red Color as requested) */
     #chat-trigger {
         background-color: var(--chat-red);
         color: white;
@@ -745,12 +744,11 @@
 
     #chat-trigger:hover { transform: scale(1.1); }
 
-    /* Chat Window */
     #chat-box {
         display: none;
         width: 350px;
         height: 450px;
-        background: #121212; /* Dark theme for glassmorphism */
+        background: #121212;
         border: 2px solid var(--chat-blue);
         border-radius: 15px;
         flex-direction: column;
@@ -821,7 +819,8 @@
 </div>
 
 <script>
-    const API_KEY = "AIzaSyCP_7LgXcC41dJkyhGrZ0E15zWmWVWQUMk"; 
+    // Updated with your new API Key
+    const API_KEY = "AIzaSyCXjzbXzm9Rx4WkFW3ue5CppXxq1n0Wf7g"; 
 
     function toggleChat() {
         const box = document.getElementById('chat-box');
@@ -835,16 +834,25 @@
 
         if (!text) return;
 
-        // User Message
         msgDiv.innerHTML += `<div class="message user-msg">${text}</div>`;
         input.value = '';
+        msgDiv.scrollTop = msgDiv.scrollHeight;
 
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: "You are the AI assistant for CoreMMC Hosting. Answer users helpfully about VPS and Minecraft servers. User says: " + text }] }] })
+                body: JSON.stringify({ 
+                    contents: [{ 
+                        parts: [{ text: "Context: You are the AI for CoreMMC Hosting. Provide concise, helpful answers about VPS and Minecraft servers. User says: " + text }] 
+                    }] 
+                })
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message || 'API Error');
+            }
 
             const data = await response.json();
             const aiResponse = data.candidates[0].content.parts[0].text;
@@ -852,9 +860,17 @@
             msgDiv.innerHTML += `<div class="message ai-msg">${aiResponse}</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
         } catch (error) {
-            msgDiv.innerHTML += `<div class="message ai-msg" style="border-color:red">Error: Connection failed. Check internet.</div>`;
+            console.error("Chat Error:", error);
+            msgDiv.innerHTML += `<div class="message ai-msg" style="border-left: 3px solid var(--chat-red)">Error: Connection failed. Check if API key is active.</div>`;
         }
     }
+
+    // Allow Enter key to send message
+    document.getElementById('chat-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
 </script>
 </body>
 </html>

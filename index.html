@@ -1048,315 +1048,138 @@ setTimeout(() => {
         inputBar.prepend(btn);
     }
 }, 1500);
-    // --- COREMMC ULTIMATE FIX: DM PERSISTENCE, CALL & IMAGE BUTTONS ---
+// --- COREMMC MASTER ALL-IN-ONE ENGINE ---
 
-// 1. DM SEND FUNCTION FIX (Preventing Auto-Back)
-function sendPrivateMsg(targetUser) {
-    const input = document.getElementById('dm-input-field');
-    const text = input.value.trim();
-    if(!text) return;
+const coreAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
+let currentUser = null;
 
-    const chatID = [activeUser, targetUser].sort().join("_");
-    db.ref("dms/" + chatID).push().set({
-        from: activeUser,
-        message: text,
-        timestamp: Date.now()
-    });
-    
-    input.value = ""; // Sirf text clear hoga, window "Back" nahi hogi
-}
-
-// 2. OPEN DM WINDOW (With Call Button in Header)
-function openPrivateChat(targetUser) {
-    const dmArea = document.getElementById('dm-list');
-    dmArea.innerHTML = `
-        <div style="background:#161b22; padding:12px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-            <button onclick="showTab('dm')" style="background:none; border:none; color:#3498db; cursor:pointer; font-weight:bold;">< Back</button>
-            <b style="color:#2ecc71; font-size:16px;">${targetUser}</b>
-            <button onclick="startCall('${targetUser}')" style="background:#2ecc71; border:none; color:white; padding:5px 12px; border-radius:15px; font-size:12px; cursor:pointer; font-weight:bold;">📞 Call</button>
-        </div>
-        <div id="private-msgs" style="height:340px; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px; background:#0d1117;"></div>
-        <div style="padding:12px; display:flex; gap:8px; border-top:1px solid #333; background:#161b22;">
-            <button onclick="sendPrivateImage('${targetUser}')" style="background:#3498db; border:none; padding:8px; border-radius:8px; cursor:pointer; color:white;">🖼️</button>
-            <input type="text" id="dm-input-field" placeholder="Type message..." style="flex:1; padding:10px; background:#0d1117; border:1px solid #444; color:white; border-radius:8px; outline:none;">
-            <button onclick="sendPrivateMsg('${targetUser}')" style="background:#2ecc71; border:none; color:white; padding:5px 15px; border-radius:8px; font-weight:bold; cursor:pointer;">Send</button>
-        </div>
-    `;
-
-    // Messages Real-time Listener
-    const chatID = [activeUser, targetUser].sort().join("_");
-    db.ref("dms/" + chatID).on("value", (snap) => {
-        const msgBox = document.getElementById('private-msgs');
-        if(!msgBox) return;
-        msgBox.innerHTML = "";
-        snap.forEach(child => {
-            const data = child.val();
-            const isMe = data.from === activeUser;
-            msgBox.innerHTML += `
-                <div style="align-self:${isMe?'flex-end':'flex-start'}; background:${isMe?'#3498db':'#21262d'}; color:white; padding:10px 14px; border-radius:15px; max-width:75%; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">
-                    ${data.message}
-                </div>`;
-        });
-        msgBox.scrollTop = msgBox.scrollHeight;
-    });
-
-    // Enter key support for DM
-    document.getElementById('dm-input-field').addEventListener('keypress', (e) => {
-        if(e.key === 'Enter') sendPrivateMsg(targetUser);
+// 1. AUTHENTICATION & REGISTRATION LOGIC
+function googleLogin() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).then((res) => {
+        currentUser = res.user;
+        checkUserProfile(res.user);
     });
 }
 
-// 3. PRIVATE IMAGE UPLOADER
-function sendPrivateImage(targetUser) {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (file.size > 1048576) return alert("Image size must be less than 1MB!");
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const imgHtml = `<img src="${event.target.result}" style="width:100%; border-radius:8px; cursor:pointer;" onclick="window.open(this.src)">`;
-            const chatID = [activeUser, targetUser].sort().join("_");
-            db.ref("dms/" + chatID).push().set({
-                from: activeUser,
-                message: imgHtml,
-                timestamp: Date.now()
-            });
-        };
-        reader.readAsDataURL(file);
-    };
-    fileInput.click();
-}
-
-// 4. CALL NOTIFICATION FIX (Ensuring UI pops up for Receiver)
-db.ref("calls/" + activeUser).on("value", (snap) => {
-    const callData = snap.val();
-    if (callData && callData.status === "ringing") {
-        if(!document.getElementById('call-overlay')) {
-            showCallingScreen(callData.caller, "incoming");
-        }
-    }
-});
-    // --- COREMMC SOUND NOTIFICATION MODULE ---
-
-// 1. Audio Element Create Karna (Professional Chat Pop Sound)
-const chatNotificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-
-// 2. DM Messages par Sound Trigger Karna
-function enableNotificationSound() {
-    // Ye listener check karega ki dms path mein koi badlav hua hai ya nahi
-    db.ref("dms").on("child_added", (snapshot) => {
-        // Sirf tab sound bajega jab window load ho chuki ho aur message kisi aur ne bheja ho
-        const lastChat = snapshot.key;
-        
-        // Is chat ID ke andar ke aakhri message ko track karna
-        db.ref("dms/" + lastChat).limitToLast(1).on("child_added", (msgSnap) => {
-            const msgData = msgSnap.val();
-            
-            // Logic: Agar message meri taraf se nahi hai, toh sound bajao
-            if (msgData.from !== activeUser) {
-                // Browser policies ki wajah se sound play karne ke liye user interaction zaroori hai
-                chatNotificationSound.play().catch(e => console.log("Sound play blocked until user clicks once on page."));
-            }
-        });
-    });
-}
-
-// 3. System ko start karna
-enableNotificationSound();
-    // --- COREMMC DM NOTIFICATION BADGE MODULE ---
-
-// 1. Badge Element ko DM Tab par add karna
-setTimeout(() => {
-    const dmTab = document.querySelector('button[onclick="showTab(\'dm\')"]');
-    if (dmTab && !document.getElementById('dm-badge')) {
-        dmTab.style.position = 'relative';
-        dmTab.innerHTML += `
-            <span id="dm-badge" style="
-                display: none;
-                position: absolute;
-                top: -5px;
-                right: 2px;
-                background: #e74c3c;
-                color: white;
-                font-size: 10px;
-                padding: 2px 6px;
-                border-radius: 50%;
-                font-weight: bold;
-                border: 2px solid #161b22;
-                box-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
-            ">0</span>`;
-    }
-}, 2000);
-
-let unreadCount = 0;
-
-// 2. Unread Messages ko Track karna
-function trackUnreadDMs() {
-    db.ref("dms").on("child_added", (snapshot) => {
-        const chatID = snapshot.key;
-        
-        // Agar main is chat ka hissa hoon toh naye messages check karo
-        if (chatID.includes(activeUser)) {
-            db.ref("dms/" + chatID).limitToLast(1).on("child_added", (msgSnap) => {
-                const data = msgSnap.val();
-                
-                // Agar message doosre ne bheja hai aur main abhi DM tab par nahi hoon
-                const currentTab = document.querySelector('.chat-tab[style*="display: flex"]')?.id;
-                
-                if (data.from !== activeUser && currentTab !== 'tab-dm') {
-                    unreadCount++;
-                    updateBadgeUI();
-                }
-            });
-        }
-    });
-}
-
-// 3. Badge UI Update karna
-function updateBadgeUI() {
-    const badge = document.getElementById('dm-badge');
-    if (badge) {
-        if (unreadCount > 0) {
-            badge.innerText = unreadCount > 9 ? "9+" : unreadCount;
-            badge.style.display = 'block';
+function checkUserProfile(user) {
+    db.ref('users/' + user.uid).once('value', (snap) => {
+        if (!snap.exists()) {
+            openRegistrationForm(user); // Naya user hai toh register karwao
         } else {
-            badge.style.display = 'none';
+            launchMasterDashboard(); // Purana hai toh seedha dashboard
         }
-    }
+    });
 }
 
-// 4. DM Tab par click karte hi Badge clear karna
-const originalShowTab = showTab;
-showTab = function(tabName) {
-    if (tabName === 'dm') {
-        unreadCount = 0;
-        updateBadgeUI();
-    }
-    originalShowTab(tabName);
-};
-
-// Start tracking
-trackUnreadDMs(); 
-    // --- COREMMC GLOBAL CHAT SYSTEM (NO CORRUPTION) ---
-
-const core_audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-
-// 1. UI INJECTOR (Full Screen Discord Style)
-function openCoreChat() {
-    // Purana koi overlay ho toh remove karo
-    const old = document.getElementById('cmmc-full-chat');
-    if(old) old.remove();
-
-    const chatUI = document.createElement('div');
-    chatUI.id = 'cmmc-full-chat';
-    chatUI.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:#ffffff; z-index:9999999; display:flex; flex-direction:column; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;";
-    
-    chatUI.innerHTML = `
-        <div style="background:#f2f3f5; padding:15px; border-bottom:1px solid #e3e5e8; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:10px; height:10px; background:#23a559; border-radius:50%;"></div>
-                <b style="color:#313338; font-size:16px;">CoreMMC Public Chat</b>
-            </div>
-            <button onclick="document.getElementById('cmmc-full-chat').remove()" style="background:none; border:none; font-size:22px; color:#4e5058; cursor:pointer;">&times;</button>
-        </div>
-
-        <div id="cmmc-msg-container" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:15px;"></div>
-
-        <div style="background:#f2f3f5; padding:15px; border-top:1px solid #e3e5e8;">
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <input type="text" id="cmmc-input" placeholder="Message Global Chat" style="flex:1; padding:12px; border-radius:8px; border:1px solid #dbdee1; outline:none; font-size:15px;">
-                <button onclick="cmmc_sendMessage()" style="background:#5865f2; color:white; border:none; padding:10px 20px; border-radius:5px; font-weight:600; cursor:pointer;">Send</button>
-            </div>
-            
-            <div style="display:flex; justify-content:space-around; align-items:center; border-top:1px solid #dbdee1; padding-top:10px;">
-                <div onclick="cmmc_switch('public')" style="text-align:center; color:#5865f2; cursor:pointer;">🌍 <div style="font-size:10px;">Public</div></div>
-                <div onclick="cmmc_switch('dm')" style="text-align:center; color:#4e5058; cursor:pointer;">💬 <div style="font-size:10px;">DM</div></div>
-                <div onclick="cmmc_switch('profile')" style="text-align:center; color:#4e5058; cursor:pointer;">👤 <div style="font-size:10px;">Profile</div></div>
-            </div>
-        </div>
-
-        <div id="cmmc-menu" style="display:none; position:fixed; background:white; border:1px solid #dbdee1; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.1); z-index:10000000; overflow:hidden;">
-            <div onclick="cmmc_action('copy')" style="padding:12px 20px; cursor:pointer; hover:background:#f2f3f5;">Copy</div>
-            <div onclick="cmmc_action('forward')" style="padding:12px 20px; cursor:pointer; border-top:1px solid #eee;">Forward</div>
-            <div onclick="cmmc_action('delete')" style="padding:12px 20px; color:#da373c; cursor:pointer; border-top:1px solid #eee;">Delete</div>
+// 2. DISCORD-STYLE REGISTRATION FORM (After Login)
+function openRegistrationForm(user) {
+    const regUI = document.createElement('div');
+    regUI.id = 'reg-overlay';
+    regUI.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; z-index:10000000; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
+    regUI.innerHTML = `
+        <div style="background:#1e293b; padding:30px; border-radius:20px; width:100%; max-width:400px; text-align:center;">
+            <h2>Complete Profile</h2>
+            <p style="color:#94a3b8; margin-bottom:20px;">Welcome to CoreMMC, ${user.displayName}!</p>
+            <input type="text" id="reg-name" placeholder="Choose Username" style="width:100%; padding:12px; margin-bottom:10px; background:#0f172a; border:1px solid #334155; color:white; border-radius:8px;">
+            <input type="text" id="reg-phone" placeholder="Phone Number (Optional)" style="width:100%; padding:12px; margin-bottom:10px; background:#0f172a; border:1px solid #334155; color:white; border-radius:8px;">
+            <input type="text" id="reg-address" placeholder="Address (Optional)" style="width:100%; padding:12px; margin-bottom:20px; background:#0f172a; border:1px solid #334155; color:white; border-radius:8px;">
+            <button onclick="saveUserProgress()" style="width:100%; padding:12px; background:#3b82f6; border:none; color:white; border-radius:10px; font-weight:bold;">Create Account</button>
         </div>
     `;
-    document.body.appendChild(chatUI);
-    cmmc_listen();
+    document.body.appendChild(regUI);
 }
 
-// 2. DATA ENGINE
-function cmmc_listen() {
-    db.ref("public_chat_v2").on("value", (snap) => {
-        const box = document.getElementById('cmmc-msg-container');
-        if(!box) return;
-        box.innerHTML = "";
+function saveUserProgress() {
+    const name = document.getElementById('reg-name').value;
+    const phone = document.getElementById('reg-phone').value;
+    const addr = document.getElementById('reg-address').value;
+
+    db.ref('users/' + currentUser.uid).set({
+        username: name,
+        email: currentUser.email,
+        phone: phone,
+        address: addr,
+        photo: currentUser.photoURL || 'https://i.ibb.co/default-avatar.png',
+        joined: Date.now()
+    }).then(() => {
+        document.getElementById('reg-overlay').remove();
+        launchMasterDashboard();
+    });
+}
+
+// 3. FULL SCREEN DISCORD CHAT UI (Fixed Colors)
+function launchMasterDashboard() {
+    const mainUI = document.createElement('div');
+    mainUI.id = 'core-dashboard';
+    mainUI.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999999; display:flex; flex-direction:column;";
+    
+    mainUI.innerHTML = `
+        <div style="background:#f2f3f5; padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="${currentUser.photoURL}" style="width:30px; height:30px; border-radius:50%;">
+                <b style="color:#313338;">CoreMMC Public Chat</b>
+            </div>
+            <button onclick="document.getElementById('core-dashboard').remove()" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+
+        <div id="master-chat-body" style="flex:1; overflow-y:auto; padding:20px; background:white; display:flex; flex-direction:column; gap:12px;"></div>
+
+        <div style="background:#f2f3f5; padding:15px; border-top:1px solid #ddd;">
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <input type="text" id="master-input" placeholder="Message Public Chat..." style="flex:1; padding:12px; border-radius:8px; border:1px solid #ccc; outline:none;">
+                <button onclick="sendMasterMsg()" style="background:#5865f2; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold;">Send</button>
+            </div>
+            
+            <div style="display:flex; justify-content:space-around; align-items:center;">
+                <div onclick="switchMasterTab('public')" style="text-align:center; cursor:pointer; color:#5865f2;">🌍<br><span style="font-size:10px;">Public</span></div>
+                <div onclick="switchMasterTab('dm')" style="text-align:center; cursor:pointer; color:#4e5058;">💬<br><span style="font-size:10px;">DMs</span></div>
+                <div onclick="switchMasterTab('hosting')" style="text-align:center; cursor:pointer; color:#4e5058;">🚀<br><span style="font-size:10px;">Hosting</span></div>
+                <div onclick="switchMasterTab('profile')" style="text-align:center; cursor:pointer; color:#4e5058;">👤<br><span style="font-size:10px;">Account</span></div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(mainUI);
+    listenToPublicChat();
+}
+
+// 4. REAL-TIME CHAT LISTENERS
+function listenToPublicChat() {
+    db.ref("public_messages_v4").on("value", (snap) => {
+        const body = document.getElementById('master-chat-body');
+        if(!body) return;
+        body.innerHTML = "";
         
         snap.forEach(child => {
             const m = child.val();
-            const msgRow = document.createElement('div');
-            msgRow.style = "display:flex; flex-direction:column; position:relative;";
-            msgRow.oncontextmenu = (e) => cmmc_showMenu(e, child.key, m.text);
-            
-            // Long Press Mobile Fix
-            let pressTimer;
-            msgRow.ontouchstart = (e) => pressTimer = setTimeout(() => cmmc_showMenu(e, child.key, m.text), 600);
-            msgRow.ontouchend = () => clearTimeout(pressTimer);
-
-            msgRow.innerHTML = `
+            const msgDiv = document.createElement('div');
+            msgDiv.style = "padding:5px 0; border-bottom: 0px;"; // Discord style (No bubbles)
+            msgDiv.innerHTML = `
                 <div style="display:flex; align-items:baseline; gap:8px;">
-                    <span style="font-weight:600; color:#313338; font-size:15px;">${m.user}</span>
-                    <span style="font-size:11px; color:#80848e;">${new Date(m.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <span style="font-weight:bold; color:#1a1d20;">${m.user}</span>
+                    <span style="font-size:10px; color:#888;">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 </div>
-                <div style="color:#313338; font-size:15px; margin-top:2px; word-wrap: break-word;">${m.text}</div>
+                <div style="color:#313338; font-size:15px; margin-top:2px;">${m.text}</div>
             `;
-            box.appendChild(msgRow);
+            body.appendChild(msgDiv);
         });
-        box.scrollTop = box.scrollHeight;
+        body.scrollTop = body.scrollHeight;
     });
 }
 
-function cmmc_sendMessage() {
-    const input = document.getElementById('cmmc-input');
+function sendMasterMsg() {
+    const input = document.getElementById('master-input');
     if(!input.value.trim()) return;
     
-    db.ref("public_chat_v2").push({
-        user: activeUser,
+    db.ref("public_messages_v4").push({
+        user: currentUser.displayName || "User",
         text: input.value,
         time: Date.now()
     });
     
-    core_audio.play(); // Notification Sound
+    coreAudio.play(); // Play Sound
     input.value = "";
-}
-
-// 3. MENU ACTIONS
-let selId = "", selTxt = "";
-function cmmc_showMenu(e, id, txt) {
-    e.preventDefault();
-    selId = id; selTxt = txt;
-    const menu = document.getElementById('cmmc-menu');
-    const x = e.pageX || e.touches[0].pageX;
-    const y = e.pageY || e.touches[0].pageY;
-    menu.style.display = 'block';
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
-}
-
-function cmmc_action(type) {
-    if(type === 'copy') navigator.clipboard.writeText(selTxt);
-    if(type === 'delete') db.ref("public_chat_v2/" + selId).remove();
-    document.getElementById('cmmc-menu').style.display = 'none';
-}
-
-// Close menu on click
-document.addEventListener('click', () => { 
-    if(document.getElementById('cmmc-menu')) document.getElementById('cmmc-menu').style.display = 'none'; 
-});
+    }
 </script>
 </body>
 </html>

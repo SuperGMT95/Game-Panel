@@ -804,7 +804,7 @@ document.getElementById('chat-input').addEventListener('keypress', function (e) 
         </div>
         
         <div id="msg-display" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #161b22;">
-            </div>
+        </div>
 
         <div style="padding: 12px; background: #0d1117; display: flex; gap: 8px; border-top: 1px solid #333;">
             <input type="text" id="msg-text" placeholder="Type message..." style="flex: 1; background: #21262d; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 8px; outline: none;">
@@ -813,55 +813,94 @@ document.getElementById('chat-input').addEventListener('keypress', function (e) 
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <script>
-// --- CORE CONFIG ---
+// --- FIREBASE CONFIG ---
+const firebaseConfig = {
+    apiKey: "AIzaSyDZGj9ivM224fKZjzt8d9lSaNhcb-_IPjE",
+    authDomain: "coremmc-chat.firebaseapp.com",
+    databaseURL: "https://coremmc-chat-default-rtdb.firebaseio.com",
+    projectId: "coremmc-chat",
+    storageBucket: "coremmc-chat.firebasestorage.app",
+    messagingSenderId: "215541867812",
+    appId: "1:215541867812:web:0c9e1fcd21ae8a840effb1"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 let activeUser = localStorage.getItem('chatUser') || "";
 
+// Toggle Login or Chat Window
 function toggleCommunityChat() {
     const login = document.getElementById('chat-login');
-    const window = document.getElementById('chat-window');
+    const chatWin = document.getElementById('chat-window');
     
     if (activeUser === "") {
         login.style.display = (login.style.display === 'none') ? 'block' : 'none';
-        window.style.display = 'none';
+        chatWin.style.display = 'none';
     } else {
-        window.style.display = (window.style.display === 'none') ? 'flex' : 'none';
+        chatWin.style.display = (chatWin.style.display === 'none') ? 'flex' : 'none';
         login.style.display = 'none';
+        if(chatWin.style.display === 'flex') loadMessages();
     }
 }
 
+// Start Session
 function initChatSession() {
-    const name = document.getElementById('user-name-input').value.trim();
-    if (name.length < 3) return alert("Username too short!");
+    const nameInput = document.getElementById('user-name-input');
+    const name = nameInput.value.trim();
+    if (name.length < 3) return alert("Username kam se kam 3 akshar ka hona chahiye!");
     activeUser = name;
     localStorage.setItem('chatUser', name);
-    toggleCommunityChat(); // Switch to chat window
-    addSystemMsg(`Welcome, ${name}!`);
+    toggleCommunityChat();
 }
 
+// Send Message to Firebase
 function postMessage() {
     const input = document.getElementById('msg-text');
-    const area = document.getElementById('msg-display');
     const text = input.value.trim();
     if (!text) return;
 
-    // Discord Style Layout
-    const msgHtml = `
-        <div style="align-self: flex-end; background: #3498db; color: white; padding: 8px 12px; border-radius: 12px 12px 2px 12px; max-width: 80%; position: relative;">
-            <span style="display: block; font-size: 10px; color: #e0e0e0; margin-bottom: 3px;">${activeUser}</span>
-            <span style="font-size: 14px;">${text}</span>
-            <div style="font-size: 9px; margin-top: 4px; text-align: right; cursor: pointer;" onclick="this.parentElement.remove()">🗑️ Delete</div>
-        </div>
-    `;
-    
-    area.innerHTML += msgHtml;
+    db.ref("messages").push().set({
+        user: activeUser,
+        message: text,
+        timestamp: Date.now()
+    });
+
     input.value = "";
-    area.scrollTop = area.scrollHeight;
 }
 
-function addSystemMsg(text) {
-    const area = document.getElementById('msg-display');
-    area.innerHTML += `<div style="text-align: center; color: #888; font-size: 11px; margin: 10px 0;">${text}</div>`;
+// Real-time Load
+function loadMessages() {
+    db.ref("messages").limitToLast(50).on("value", (snapshot) => {
+        const area = document.getElementById('msg-display');
+        area.innerHTML = "";
+        snapshot.forEach((child) => {
+            const data = child.val();
+            const isMe = data.user === activeUser;
+            
+            area.innerHTML += `
+                <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; 
+                            background: ${isMe ? '#3498db' : '#333'}; 
+                            color: white; padding: 10px 14px; border-radius: 15px; 
+                            max-width: 80%; margin-bottom: 5px; position: relative;">
+                    <span style="display: block; font-size: 10px; opacity: 0.7; margin-bottom: 3px;">${data.user}</span>
+                    <span style="font-size: 14px;">${data.message}</span>
+                    ${isMe ? `<div style="font-size: 9px; margin-top: 5px; text-align: right; cursor: pointer; opacity: 0.5;" onclick="deleteMsg('${child.key}')">🗑️ Delete</div>` : ''}
+                </div>
+            `;
+        });
+        area.scrollTop = area.scrollHeight;
+    });
+}
+
+// Delete Function
+function deleteMsg(key) {
+    if(confirm("Delete this message?")) db.ref("messages/" + key).remove();
 }
 
 // Enter Key Support

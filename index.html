@@ -920,5 +920,61 @@ function logout() {
 // Enter Key Support
 document.getElementById('public-input')?.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendPublicMsg(); });
 </script>
+    // --- FIXED DM VIEW & CALL FUNCTION ---
+
+// 1. DM History Load karne ka sahi tarika (Clickable)
+function loadDMHistory() {
+    const list = document.getElementById('dm-list');
+    list.innerHTML = "<p style='color:#555; text-align:center;'>Loading your chats...</p>";
+    
+    db.ref("dms").on("value", (snapshot) => {
+        list.innerHTML = "";
+        let found = false;
+        snapshot.forEach((chat) => {
+            if (chat.key.includes(activeUser)) {
+                found = true;
+                const otherUser = chat.key.replace(activeUser, "").replace("_", "");
+                
+                // Card banaya hai jo click karne par DM box khol dega
+                list.innerHTML += `
+                    <div onclick="openPrivateChat('${otherUser}')" style="background: #1c2128; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #3498db; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="color: #2ecc71; font-weight: bold; display: block;">👤 ${otherUser}</span>
+                            <span style="font-size: 11px; color: #888;">Click to view messages</span>
+                        </div>
+                        <button onclick="startCall('${otherUser}')" style="background: #3498db; border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 10px;">📞 Call</button>
+                    </div>`;
+            }
+        });
+        if(!found) list.innerHTML = "<p style='color:#555; text-align:center;'>No private chats yet.</p>";
+    });
+}
+
+// 2. DM kholne ka function
+function openPrivateChat(targetUser) {
+    let msg = prompt(`Chatting with ${targetUser}\nType your message:`, forwardData || "");
+    if (msg) {
+        const chatID = [activeUser, targetUser].sort().join("_");
+        db.ref("dms/" + chatID).push().set({
+            from: activeUser,
+            to: targetUser,
+            message: msg,
+            timestamp: Date.now()
+        });
+        alert("Reply Sent!");
+        forwardData = "";
+    }
+}
+
+// 3. Hosting Inquiry Call Function
+function startCall(targetUser) {
+    // Ye function check karega ki hosting inquiries ke liye call connect ho rahi hai
+    const confirmCall = confirm(`Do you want to start a voice call with ${targetUser} to discuss CoreMMC Hosting?`);
+    if(confirmCall) {
+        alert(`Connecting to ${targetUser}...\n[Call Status: Voice bridge initializing]`);
+        // Note: Real voice call ke liye WebRTC lagta hai, abhi ye alert signal dega
+    }
+}
+</script> 
 </body>
 </html>

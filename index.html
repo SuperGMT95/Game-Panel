@@ -982,6 +982,118 @@
                 </div>`;
         });
     }
+    <style>
+    /* Owner Specific Styling */
+    .owner-msg { border-left: 3px solid #ff4757 !important; background: rgba(255, 71, 87, 0.05) !important; }
+    .owner-tag { 
+        background: #ff4757; color: white; font-size: 10px; 
+        padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle;
+    }
+    .owner-name { color: #ff4757 !important; font-weight: 900 !important; }
+
+    /* Layout Adjustments */
+    #master-app-interface {
+        position: fixed; top: 0; right: -100%; /* Initially hidden */
+        width: 100%; height: 100%; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 99999; display: flex !important;
+    }
+    #master-app-interface.active { right: 0; }
+
+    .sidebar { border-right: 1px solid rgba(255,255,255,0.05); }
+    
+    /* Smooth Scrollbar */
+    #chat-area::-webkit-scrollbar { width: 4px; }
+    #chat-area::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+    /* Floating Toggle Button */
+    .chat-trigger-btn {
+        position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px;
+        background: var(--primary); border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; color: white;
+        font-size: 24px; cursor: pointer; box-shadow: 0 8px 24px rgba(88, 101, 242, 0.4);
+        z-index: 9999; transition: 0.3s;
+    }
+    .chat-trigger-btn:hover { transform: scale(1.1) rotate(10deg); }
+</style>
+
+<div class="chat-trigger-btn" onclick="toggleChat()"><i class="fas fa-comments"></i></div>
+
+<script>
+    // --- UPDATED LOGIC FOR OWNER & DASHBOARD ---
+
+    // 1. Toggle Function (Main website nahi gayab hogi, chat upar aayegi)
+    function toggleChat() {
+        const ui = document.getElementById('master-app-interface');
+        ui.classList.toggle('active');
+        if(!currentUser) googleLogin(); // Force login if trying to chat
+    }
+
+    // 2. Modified Message Loader with Owner Detection
+    function loadMessages(node) {
+        db.ref(node).limitToLast(60).on('value', (snap) => {
+            const chatArea = document.getElementById('chat-area');
+            chatArea.innerHTML = "";
+            
+            snap.forEach(child => {
+                const data = child.val();
+                const isOwner = (data.name === "SuperGMT95"); // Check for your name
+                
+                chatArea.innerHTML += `
+                    <div class="msg-box ${isOwner ? 'owner-msg' : ''}">
+                        <img src="${data.pfp}" class="user-pfp" style="${isOwner ? 'border: 2px solid #ff4757' : ''}">
+                        <div class="msg-text-wrap">
+                            <div style="font-size:12px; margin-bottom:2px;">
+                                <span class="${isOwner ? 'owner-name' : ''}" style="color:var(--primary); font-weight:bold;">
+                                    ${data.name}
+                                </span>
+                                ${isOwner ? '<span class="owner-tag">OWNER</span>' : ''}
+                            </div>
+                            <div style="color:#dbdee1;">${data.text}</div>
+                        </div>
+                    </div>`;
+            });
+            chatArea.scrollTop = chatArea.scrollHeight;
+        });
+    }
+
+    // 3. Setup After Login (Navbar changes)
+    function setupUIAfterLogin() {
+        const loginBtn = document.getElementById('login-btn-top');
+        if(loginBtn) {
+            loginBtn.innerHTML = `<img src="${currentUser.photoURL}" style="width:25px; border-radius:50%; margin-right:8px;"> ${currentUser.displayName}`;
+            loginBtn.style.background = "#23a559";
+        }
+        // Don't hide top-nav, just enable the interface overlay
+        document.getElementById('master-app-interface').style.display = 'flex';
+        switchTab('public');
+    }
+
+    // 4. Enhanced Send Function
+    function sendMessage(e) {
+        if(e.key === 'Enter') {
+            const input = document.getElementById('msg-input');
+            if(!input.value.trim() || !currentUser) return;
+
+            // Use the node based on currentTab
+            const node = (currentTab === 'public') ? 'public_chat' : `dms/${currentUser.uid}`;
+
+            db.ref(node).push({
+                name: currentUser.displayName,
+                pfp: currentUser.photoURL,
+                text: input.value,
+                uid: currentUser.uid,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            input.value = "";
+        }
+    }
+
+    // Close button inside chat
+    const closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style = "position:absolute; top:10px; right:20px; color:white; font-size:30px; cursor:pointer; z-index:10002;";
+    closeBtn.onclick = toggleChat;
+    document.getElementById('master-app-interface').appendChild(closeBtn);
 </script>
 </body>
 </html>

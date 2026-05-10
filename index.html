@@ -712,388 +712,292 @@
         }
         setInterval(createSnowflake, 150);
     </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
-
-<style>
-    /* Full Screen Discord UI Theme */
-    #core-master-ui {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: #313338; z-index: 999999; display: none; flex-direction: column;
-        color: white; font-family: 'Segoe UI', Tahoma, sans-serif;
-    }
-
-    /* Floating Chat Toggle */
-    #chat-launcher {
-        position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px;
-        background: #23a559; border-radius: 50%; display: flex; align-items: center;
-        justify-content: center; font-size: 28px; color: white; cursor: pointer;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 99999;
-    }
-
-    /* Sidebars & Content Area */
-    .master-wrapper { display: flex; flex: 1; overflow: hidden; }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoreMMC - Next Gen Hosting & Community</title>
     
-    .sidebar-icons { 
-        width: 72px; background: #1e1f22; display: flex; 
-        flex-direction: column; align-items: center; padding-top: 15px; gap: 12px;
-    }
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
 
-    .icon-circle {
-        width: 48px; height: 48px; background: #313338; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; transition: 0.2s; font-size: 20px; color: #dbdee1;
-    }
-    .icon-circle:hover, .icon-circle.active { background: #5865f2; border-radius: 30%; color: white; }
+    <style>
+        :root {
+            --primary: #5865F2; 
+            --owner-red: #ff4757;
+            --discord-bg: #313338;
+            --sidebar-bg: #1e1f22;
+            --text-gray: #b5bac1;
+        }
 
-    .main-chat-area { flex: 1; display: flex; flex-direction: column; background: #313338; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
 
-    /* Chat Messages */
-    #chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-    .msg-group { display: flex; gap: 15px; }
-    .msg-pfp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-    .msg-content { flex: 1; }
-    .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-    .msg-user { font-weight: 600; color: #f2f3f5; font-size: 15px; }
-    .msg-time { color: #949ba4; font-size: 11px; }
-    .msg-text { color: #dbdee1; font-size: 15px; line-height: 1.4; }
+        body { background: #ffffff; height: 100vh; overflow-x: hidden; }
 
-    /* Input Bar */
-    .input-container { padding: 0 20px 20px 20px; }
-    .input-box {
-        background: #383a40; border-radius: 8px; padding: 10px 15px;
-        display: flex; align-items: center; gap: 12px;
-    }
-    .input-box input {
-        flex: 1; background: transparent; border: none; color: #dbdee1;
-        outline: none; font-size: 15px;
-    }
+        /* --- 1. MAIN LANDING NAVBAR --- */
+        .landing-nav {
+            background: white; padding: 15px 5%; display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 1000;
+        }
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .logo img { width: 40px; border-radius: 50%; }
 
-    /* Registration & Profile Screens */
-    .overlay-screen {
-        position: absolute; top:0; left:0; width:100%; height:100%;
-        background: #1e1f22; display: flex; align-items: center; justify-content: center; z-index: 10;
-    }
-    .auth-card {
-        background: #313338; padding: 32px; border-radius: 8px; width: 100%;
-        max-width: 440px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    }
-    .auth-input {
-        width: 100%; padding: 10px; background: #1e1f22; border: none;
-        border-radius: 4px; color: white; margin-bottom: 20px;
-    }
-</style>
+        .nav-btns { display: flex; gap: 15px; }
+        .btn-google {
+            background: var(--primary); color: white; padding: 10px 22px; border-radius: 8px;
+            border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            transition: 0.3s;
+        }
+        .btn-google:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(88, 101, 242, 0.4); }
 
-<div id="chat-launcher" onclick="toggleMasterUI()"><i class="fas fa-comment-alt"></i></div>
+        /* --- 2. FLOATING CHAT TRIGGER --- */
+        .chat-trigger {
+            position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px;
+            background: #23a559; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 28px; color: white; cursor: pointer;
+            box-shadow: 0 8px 25px rgba(35, 165, 89, 0.4); z-index: 9999; transition: 0.3s;
+        }
+        .chat-trigger:hover { transform: scale(1.1) rotate(-10deg); }
 
-<div id="core-master-ui">
-    <div style="position: absolute; top: 15px; right: 20px; z-index: 100; cursor: pointer; font-size: 24px;" onclick="toggleMasterUI()">&times;</div>
+        /* --- 3. MASTER DISCORD OVERLAY --- */
+        #master-interface {
+            position: fixed; top: 0; right: -100%; width: 100%; height: 100%;
+            background: var(--discord-bg); z-index: 10000; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+        }
+        #master-interface.active { right: 0; }
 
-    <div id="auth-overlay" class="overlay-screen" style="display: none;">
-        <div class="auth-card">
-            <h2 style="text-align: center; margin-bottom: 8px;">Finish Setup</h2>
-            <p style="text-align: center; color: #b5bac1; margin-bottom: 20px;">Almost there! Complete your CoreMMC profile.</p>
-            <label style="font-size: 12px; font-weight: bold; color: #b5bac1;">USERNAME</label>
-            <input type="text" id="setup-username" class="auth-input">
-            <label style="font-size: 12px; font-weight: bold; color: #b5bac1;">PHONE (OPTIONAL)</label>
-            <input type="text" id="setup-phone" class="auth-input">
-            <button onclick="finalizeUser()" style="width: 100%; padding: 12px; background: #5865f2; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Start Chatting</button>
+        /* Sidebar Navigation */
+        .app-sidebar {
+            width: 72px; background: var(--sidebar-bg); display: flex;
+            flex-direction: column; align-items: center; padding: 20px 0; gap: 15px;
+        }
+        .side-icon {
+            width: 48px; height: 48px; background: var(--discord-bg); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #dbdee1; font-size: 20px; cursor: pointer; transition: 0.2s;
+        }
+        .side-icon:hover, .side-icon.active { background: var(--primary); border-radius: 15px; color: white; }
+        .side-icon.hosting:hover { background: #f1c40f; }
+
+        /* Main Content Panel */
+        .app-main { flex: 1; display: flex; flex-direction: column; position: relative; }
+        
+        .app-header {
+            height: 55px; border-bottom: 1px solid rgba(0,0,0,0.2);
+            display: flex; align-items: center; padding: 0 20px;
+            color: white; font-weight: bold; justify-content: space-between;
+        }
+        
+        #chat-scroller { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+
+        /* Message Styling */
+        .msg-row { display: flex; gap: 15px; max-width: 85%; }
+        .pfp-small { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+        .msg-bubble { background: #383a40; padding: 10px 15px; border-radius: 8px; color: #dbdee1; }
+        .msg-user { font-weight: bold; font-size: 14px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px; }
+        
+        /* Owner Badge */
+        .badge-owner { 
+            background: var(--owner-red); color: white; font-size: 9px; 
+            padding: 2px 6px; border-radius: 4px; font-weight: 900; 
+        }
+        .name-owner { color: var(--owner-red) !important; }
+
+        /* Input Area */
+        .input-area { padding: 0 20px 25px 20px; }
+        .input-bg {
+            background: #383a40; border-radius: 10px; padding: 12px 18px;
+            display: flex; align-items: center; gap: 15px;
+        }
+        .input-bg input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: white; font-size: 16px;
+        }
+
+        /* Profile & Views */
+        .view-panel { display: none; height: 100%; overflow-y: auto; padding: 40px; color: white; }
+        .profile-box { 
+            background: var(--sidebar-bg); border-radius: 15px; overflow: hidden; 
+            max-width: 500px; margin: 0 auto; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="landing-nav">
+        <div class="logo">
+            <img src="https://i.ibb.co/KzF67sFZ/copilot-image-1761965106943.png">
+            CoreMMC Hosting
         </div>
+        <div class="nav-btns" id="nav-actions">
+            <button class="btn-google" onclick="googleSignIn()">
+                <i class="fab fa-google"></i> Sign In
+            </button>
+        </div>
+    </nav>
+
+    <div style="padding: 100px 5%; text-align: center;">
+        <h1 style="font-size: 48px; color: #1e293b;">Next Generation Minecraft Hosting</h1>
+        <p style="color: #64748b; margin: 20px 0; font-size: 18px;">Fast, Reliable, and Secure. Start your journey with CoreMMC.</p>
+        <button onclick="toggleChat()" style="padding: 15px 40px; background: #5865f2; color: white; border: none; border-radius: 50px; font-weight: bold; cursor: pointer;">Get Started</button>
     </div>
 
-    <div class="master-wrapper">
-        <div class="sidebar-icons">
-            <div class="icon-circle active" onclick="switchView('public')"><i class="fas fa-globe"></i></div>
-            <div class="icon-circle" onclick="switchView('dm')"><i class="fas fa-at"></i></div>
-            <div class="icon-circle" onclick="switchView('hosting')"><i class="fas fa-server"></i></div>
+    <div class="chat-trigger" onclick="toggleChat()"><i class="fas fa-comment-dots"></i></div>
+
+    <div id="master-interface">
+        <div class="app-sidebar">
+            <div class="side-icon active" onclick="switchView('public')"><i class="fas fa-globe"></i></div>
+            <div class="side-icon" onclick="switchView('dm')"><i class="fas fa-comment-alt"></i></div>
+            <div class="side-icon hosting" onclick="switchView('hosting')"><i class="fas fa-server"></i></div>
             <div style="flex: 1;"></div>
-            <div class="icon-circle" onclick="switchView('profile')"><i class="fas fa-user-cog"></i></div>
+            <div class="side-icon" onclick="switchView('profile')"><i class="fas fa-user-circle"></i></div>
         </div>
 
-        <div class="main-chat-area" id="main-view">
-            <div style="height: 48px; border-bottom: 1px solid #262729; display: flex; align-items: center; padding: 0 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                <i class="fas fa-hashtag" style="color: #80848e; margin-right: 8px;"></i>
-                <span style="font-weight: bold;" id="view-title">public-chat</span>
+        <div class="app-main">
+            <div class="app-header">
+                <span id="view-title"># public-chat</span>
+                <i class="fas fa-times" style="cursor: pointer; font-size: 20px;" onclick="toggleChat()"></i>
             </div>
 
-            <div id="chat-messages"></div>
+            <div id="chat-scroller"></div>
 
-            <div class="input-container" id="chat-input-wrapper">
-                <div class="input-box">
-                    <i class="fas fa-plus-circle" style="color: #b5bac1; cursor: pointer;"></i>
-                    <input type="text" id="master-input-field" placeholder="Message #public-chat" onkeypress="handleChatKey(event)">
-                    <div style="display: flex; gap: 15px; color: #b5bac1;">
+            <div class="input-area" id="master-input-wrap">
+                <div class="input-bg">
+                    <i class="fas fa-plus-circle" style="color: var(--text-gray);"></i>
+                    <input type="text" id="chat-field" placeholder="Message #public-chat" onkeypress="handleSend(event)">
+                    <div style="display: flex; gap: 15px; color: var(--text-gray);">
                         <i class="fas fa-gift"></i>
-                        <i class="fas fa-sticky-note"></i>
                         <i class="fas fa-smile"></i>
                     </div>
                 </div>
             </div>
+
+            <div id="panel-view" class="view-panel"></div>
         </div>
     </div>
-</div>
 
-<script>
-    // Configuration from your screenshot
-    const masterFirebaseConfig = {
-        apiKey: "AIzaSyDNwc4Ktuq-v5VX1ezzCNfK_sJmbFs2_x0",
-        authDomain: "coremmc-hosting.firebaseapp.com",
-        projectId: "coremmc-hosting",
-        storageBucket: "coremmc-hosting.firebasestorage.app",
-        messagingSenderId: "483642646077",
-        appId: "1:483642646077:web:1e72697f704664e5af5454",
-        databaseURL: "https://coremmc-hosting-default-rtdb.firebaseio.com"
-    };
+    <script>
+        // --- FIREBASE SETUP ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNwc4Ktuq-v5VX1ezzCNfK_sJmbFs2_x0",
+            authDomain: "coremmc-hosting.firebaseapp.com",
+            projectId: "coremmc-hosting",
+            storageBucket: "coremmc-hosting.firebasestorage.app",
+            messagingSenderId: "483642646077",
+            appId: "1:483642646077:web:1e72697f704664e5af5454",
+            databaseURL: "https://coremmc-chat-default-rtdb.firebaseio.com"
+        };
 
-    if (!firebase.apps.length) { firebase.initializeApp(masterFirebaseConfig); }
-    const mAuth = firebase.auth();
-    const mDb = firebase.database();
-    let mUser = null;
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        let currentUser = null;
+        let activeTab = 'public';
 
-    function toggleMasterUI() {
-        const ui = document.getElementById('core-master-ui');
-        if(ui.style.display === 'flex') {
-            ui.style.display = 'none';
-        } else {
-            ui.style.display = 'flex';
-            handleAuthFlow();
+        // --- AUTH LOGIC ---
+        function googleSignIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then(res => {
+                currentUser = res.user;
+                updateNavbar();
+                toggleChat();
+            });
         }
-    }
 
-    function handleAuthFlow() {
-        mAuth.onAuthStateChanged((user) => {
-            if (user) {
-                mUser = user;
-                checkDatabaseUser(user.uid);
-            } else {
-                googleLogin(); // If not logged in, trigger Google Login
+        function updateNavbar() {
+            const nav = document.getElementById('nav-actions');
+            nav.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px; font-weight:bold;">
+                    <img src="${currentUser.photoURL}" style="width:35px; border-radius:50%;">
+                    <span>${currentUser.displayName}</span>
+                </div>
+            `;
+        }
+
+        // --- UI LOGIC ---
+        function toggleChat() {
+            if(!currentUser) return googleSignIn();
+            document.getElementById('master-interface').classList.toggle('active');
+            switchView('public');
+        }
+
+        function switchView(tab) {
+            activeTab = tab;
+            const scroller = document.getElementById('chat-scroller');
+            const input = document.getElementById('master-input-wrap');
+            const panel = document.getElementById('panel-view');
+            const title = document.getElementById('view-title');
+
+            scroller.style.display = 'none';
+            input.style.display = 'none';
+            panel.style.display = 'none';
+
+            if(tab === 'public' || tab === 'dm') {
+                scroller.style.display = 'flex';
+                input.style.display = 'block';
+                title.innerText = (tab === 'public') ? "# public-chat" : "CoreMMC Hosting Personal DM";
+                loadMessages(tab === 'public' ? 'public_msgs' : `dms/${currentUser.uid}`);
+            } 
+            else if(tab === 'hosting') {
+                title.innerText = "Hosting Services";
+                panel.style.display = 'block';
+                panel.innerHTML = `<div style="text-align:center;"><h2>No Active Servers</h2><p>Visit main site to order.</p></div>`;
             }
-        });
-    }
-
-    function checkDatabaseUser(uid) {
-        mDb.ref('users/' + uid).once('value', (snap) => {
-            if (snap.exists()) {
-                document.getElementById('auth-overlay').style.display = 'none';
-                loadChat('public_messages_v4');
-            } else {
-                document.getElementById('auth-overlay').style.display = 'flex';
-                document.getElementById('setup-username').value = mUser.displayName;
+            else if(tab === 'profile') {
+                title.innerText = "User Profile";
+                panel.style.display = 'block';
+                panel.innerHTML = `
+                    <div class="profile-box">
+                        <div style="height:100px; background:var(--primary);"></div>
+                        <img src="${currentUser.photoURL}" style="width:100px; height:100px; border-radius:50%; border:5px solid var(--sidebar-bg); margin-top:-50px;">
+                        <h2 style="margin:15px 0;">${currentUser.displayName}</h2>
+                        <p style="color:var(--text-gray);">${currentUser.email}</p>
+                        <button onclick="location.reload()" style="margin:20px; padding:10px 20px; background:red; border:none; border-radius:5px; color:white; cursor:pointer;">Logout</button>
+                    </div>`;
             }
-        });
-    }
+        }
 
-    function finalizeUser() {
-        const uname = document.getElementById('setup-username').value;
-        const phone = document.getElementById('setup-phone').value;
-        if(!uname) return alert("Username is required!");
-
-        mDb.ref('users/' + mUser.uid).set({
-            username: uname,
-            phone: phone,
-            email: mUser.email,
-            pfp: mUser.photoURL || 'https://i.ibb.co/default-avatar.png',
-            joined: Date.now()
-        }).then(() => checkDatabaseUser(mUser.uid));
-    }
-
-    function loadChat(node) {
-        mDb.ref(node).limitToLast(50).on('value', (snap) => {
-            const container = document.getElementById('chat-messages');
-            container.innerHTML = "";
-            snap.forEach(child => {
-                const data = child.val();
-                const time = new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                container.innerHTML += `
-                    <div class="msg-group">
-                        <img src="${data.pfp}" class="msg-pfp">
-                        <div class="msg-content">
-                            <div class="msg-header">
-                                <span class="msg-user">${data.user}</span>
-                                <span class="msg-time">Today at ${time}</span>
+        // --- CHAT LOGIC ---
+        function loadMessages(path) {
+            db.ref(path).limitToLast(50).on('value', snap => {
+                const scroller = document.getElementById('chat-scroller');
+                scroller.innerHTML = "";
+                snap.forEach(child => {
+                    const m = child.val();
+                    const isOwner = (m.name === "SuperGMT95");
+                    scroller.innerHTML += `
+                        <div class="msg-row">
+                            <img src="${m.pfp}" class="pfp-small" style="${isOwner ? 'border:2px solid var(--owner-red)' : ''}">
+                            <div class="msg-bubble">
+                                <div class="msg-user">
+                                    <span class="${isOwner ? 'name-owner' : ''}">${m.name}</span>
+                                    ${isOwner ? '<span class="badge-owner">OWNER</span>' : ''}
+                                </div>
+                                <div>${m.text}</div>
                             </div>
-                            <div class="msg-text">${data.text}</div>
-                        </div>
-                    </div>`;
+                        </div>`;
+                });
+                scroller.scrollTop = scroller.scrollHeight;
             });
-            container.scrollTop = container.scrollHeight;
-        });
-    }
-
-    function handleChatKey(e) {
-        if(e.key === 'Enter') {
-            const input = document.getElementById('master-input-field');
-            if(!input.value.trim()) return;
-            
-            mDb.ref('public_messages_v4').push({
-                user: mUser.displayName || "User",
-                text: input.value,
-                pfp: mUser.photoURL || 'https://i.ibb.co/default-avatar.png',
-                time: Date.now()
-            });
-            input.value = "";
         }
-    }
 
-    function switchView(type) {
-        const title = document.getElementById('view-title');
-        const container = document.getElementById('chat-messages');
-        const inputWrap = document.getElementById('chat-input-wrapper');
-        
-        document.querySelectorAll('.icon-circle').forEach(i => i.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-
-        if(type === 'public') {
-            title.innerText = "public-chat";
-            inputWrap.style.display = "block";
-            loadChat('public_messages_v4');
-        } else if(type === 'profile') {
-            title.innerText = "User Settings";
-            inputWrap.style.display = "none";
-            showProfileView();
-        } else if(type === 'hosting') {
-            title.innerText = "Hosting Services";
-            inputWrap.style.display = "none";
-            container.innerHTML = `<div style="padding:40px; text-align:center;"><i class="fas fa-server" style="font-size:50px; color:#5865f2; margin-bottom:20px;"></i><h2>Manage Your VPS</h2><p>No active servers found. <a href="#" style="color:#00a8fc;">Buy now</a></p></div>`;
+        function handleSend(e) {
+            if(e.key === 'Enter') {
+                const f = document.getElementById('chat-field');
+                if(!f.value.trim()) return;
+                const path = (activeTab === 'public') ? 'public_msgs' : `dms/${currentUser.uid}`;
+                db.ref(path).push({
+                    name: currentUser.displayName,
+                    pfp: currentUser.photoURL,
+                    text: f.value,
+                    time: Date.now()
+                });
+                f.value = "";
+            }
         }
-    }
-
-    function showProfileView() {
-        mDb.ref('users/' + mUser.uid).once('value', (snap) => {
-            const d = snap.val();
-            document.getElementById('chat-messages').innerHTML = `
-                <div style="max-width:600px; margin:0 auto; padding:20px;">
-                    <div style="background:#1e1f22; border-radius:8px; overflow:hidden;">
-                        <div style="height:100px; background:#5865f2;"></div>
-                        <div style="padding:16px; position:relative;">
-                            <img src="${d.pfp}" style="width:80px; height:80px; border-radius:50%; border:6px solid #1e1f22; position:absolute; top:-40px; left:16px;">
-                            <div style="margin-top:40px; background:#2b2d31; padding:16px; border-radius:8px;">
-                                <h3 style="margin-bottom:4px;">${d.username}</h3>
-                                <div style="color:#b5bac1; font-size:14px;">${d.email}</div>
-                                <hr style="border:0; border-top:1px solid #3f4147; margin:15px 0;">
-                                <p><b>Phone:</b> ${d.phone || 'Not set'}</p>
-                                <p><b>Member Since:</b> ${new Date(d.joined).toLocaleDateString()}</p>
-                                <button onclick="mAuth.signOut().then(()=>location.reload())" style="margin-top:20px; background:#da373c; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">Logout</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-        });
-    }
-    <style>
-    /* Owner Specific Styling */
-    .owner-msg { border-left: 3px solid #ff4757 !important; background: rgba(255, 71, 87, 0.05) !important; }
-    .owner-tag { 
-        background: #ff4757; color: white; font-size: 10px; 
-        padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle;
-    }
-    .owner-name { color: #ff4757 !important; font-weight: 900 !important; }
-
-    /* Layout Adjustments */
-    #master-app-interface {
-        position: fixed; top: 0; right: -100%; /* Initially hidden */
-        width: 100%; height: 100%; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 99999; display: flex !important;
-    }
-    #master-app-interface.active { right: 0; }
-
-    .sidebar { border-right: 1px solid rgba(255,255,255,0.05); }
-    
-    /* Smooth Scrollbar */
-    #chat-area::-webkit-scrollbar { width: 4px; }
-    #chat-area::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
-
-    /* Floating Toggle Button */
-    .chat-trigger-btn {
-        position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px;
-        background: var(--primary); border-radius: 50%; display: flex;
-        align-items: center; justify-content: center; color: white;
-        font-size: 24px; cursor: pointer; box-shadow: 0 8px 24px rgba(88, 101, 242, 0.4);
-        z-index: 9999; transition: 0.3s;
-    }
-    .chat-trigger-btn:hover { transform: scale(1.1) rotate(10deg); }
-</style>
-
-<div class="chat-trigger-btn" onclick="toggleChat()"><i class="fas fa-comments"></i></div>
-
-<script>
-    // --- UPDATED LOGIC FOR OWNER & DASHBOARD ---
-
-    // 1. Toggle Function (Main website nahi gayab hogi, chat upar aayegi)
-    function toggleChat() {
-        const ui = document.getElementById('master-app-interface');
-        ui.classList.toggle('active');
-        if(!currentUser) googleLogin(); // Force login if trying to chat
-    }
-
-    // 2. Modified Message Loader with Owner Detection
-    function loadMessages(node) {
-        db.ref(node).limitToLast(60).on('value', (snap) => {
-            const chatArea = document.getElementById('chat-area');
-            chatArea.innerHTML = "";
-            
-            snap.forEach(child => {
-                const data = child.val();
-                const isOwner = (data.name === "SuperGMT95"); // Check for your name
-                
-                chatArea.innerHTML += `
-                    <div class="msg-box ${isOwner ? 'owner-msg' : ''}">
-                        <img src="${data.pfp}" class="user-pfp" style="${isOwner ? 'border: 2px solid #ff4757' : ''}">
-                        <div class="msg-text-wrap">
-                            <div style="font-size:12px; margin-bottom:2px;">
-                                <span class="${isOwner ? 'owner-name' : ''}" style="color:var(--primary); font-weight:bold;">
-                                    ${data.name}
-                                </span>
-                                ${isOwner ? '<span class="owner-tag">OWNER</span>' : ''}
-                            </div>
-                            <div style="color:#dbdee1;">${data.text}</div>
-                        </div>
-                    </div>`;
-            });
-            chatArea.scrollTop = chatArea.scrollHeight;
-        });
-    }
-
-    // 3. Setup After Login (Navbar changes)
-    function setupUIAfterLogin() {
-        const loginBtn = document.getElementById('login-btn-top');
-        if(loginBtn) {
-            loginBtn.innerHTML = `<img src="${currentUser.photoURL}" style="width:25px; border-radius:50%; margin-right:8px;"> ${currentUser.displayName}`;
-            loginBtn.style.background = "#23a559";
-        }
-        // Don't hide top-nav, just enable the interface overlay
-        document.getElementById('master-app-interface').style.display = 'flex';
-        switchTab('public');
-    }
-
-    // 4. Enhanced Send Function
-    function sendMessage(e) {
-        if(e.key === 'Enter') {
-            const input = document.getElementById('msg-input');
-            if(!input.value.trim() || !currentUser) return;
-
-            // Use the node based on currentTab
-            const node = (currentTab === 'public') ? 'public_chat' : `dms/${currentUser.uid}`;
-
-            db.ref(node).push({
-                name: currentUser.displayName,
-                pfp: currentUser.photoURL,
-                text: input.value,
-                uid: currentUser.uid,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-            input.value = "";
-        }
-    }
-
-    // Close button inside chat
-    const closeBtn = document.createElement('div');
-    closeBtn.innerHTML = '&times;';
-    closeBtn.style = "position:absolute; top:10px; right:20px; color:white; font-size:30px; cursor:pointer; z-index:10002;";
-    closeBtn.onclick = toggleChat;
-    document.getElementById('master-app-interface').appendChild(closeBtn);
-</script>
+    </script>
 </body>
 </html>

@@ -784,5 +784,88 @@ document.getElementById('chat-input').addEventListener('keypress', function (e) 
     if (e.key === 'Enter') sendMessage();
 });
 </script>
+    <div id="community-chat-wrapper" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: 'Poppins', sans-serif;">
+    
+    <div id="chat-btn" onclick="toggleCommunityChat()" style="width: 65px; height: 65px; background: linear-gradient(135deg, #2ecc71, #3498db); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 5px 20px rgba(0,0,0,0.4); transition: 0.3s;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg>
+    </div>
+
+    <div id="chat-login" style="display: none; position: absolute; bottom: 80px; right: 0; width: 320px; background: #1a1a1a; padding: 25px; border-radius: 15px; border: 1px solid #3498db; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+        <h3 style="color: #2ecc71; margin-top: 0;">CoreMMC Chat</h3>
+        <p style="color: #ccc; font-size: 13px;">Enter your username to start talking</p>
+        <input type="text" id="user-name-input" placeholder="Enter Name..." style="width: 85%; padding: 10px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; margin-bottom: 15px; outline: none;">
+        <button onclick="initChatSession()" style="width: 93%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Continue</button>
+    </div>
+
+    <div id="chat-window" style="display: none; position: absolute; bottom: 80px; right: 0; width: 360px; height: 500px; background: #111; border-radius: 15px; border: 1px solid #333; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+        <div style="background: linear-gradient(90deg, #2ecc71, #3498db); padding: 15px; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+            <span>Community Chat</span>
+            <span onclick="toggleCommunityChat()" style="cursor: pointer; font-size: 20px;">×</span>
+        </div>
+        
+        <div id="msg-display" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #161b22;">
+            </div>
+
+        <div style="padding: 12px; background: #0d1117; display: flex; gap: 8px; border-top: 1px solid #333;">
+            <input type="text" id="msg-text" placeholder="Type message..." style="flex: 1; background: #21262d; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 8px; outline: none;">
+            <button onclick="postMessage()" style="background: #2ecc71; color: white; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; font-weight: bold;">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- CORE CONFIG ---
+let activeUser = localStorage.getItem('chatUser') || "";
+
+function toggleCommunityChat() {
+    const login = document.getElementById('chat-login');
+    const window = document.getElementById('chat-window');
+    
+    if (activeUser === "") {
+        login.style.display = (login.style.display === 'none') ? 'block' : 'none';
+        window.style.display = 'none';
+    } else {
+        window.style.display = (window.style.display === 'none') ? 'flex' : 'none';
+        login.style.display = 'none';
+    }
+}
+
+function initChatSession() {
+    const name = document.getElementById('user-name-input').value.trim();
+    if (name.length < 3) return alert("Username too short!");
+    activeUser = name;
+    localStorage.setItem('chatUser', name);
+    toggleCommunityChat(); // Switch to chat window
+    addSystemMsg(`Welcome, ${name}!`);
+}
+
+function postMessage() {
+    const input = document.getElementById('msg-text');
+    const area = document.getElementById('msg-display');
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Discord Style Layout
+    const msgHtml = `
+        <div style="align-self: flex-end; background: #3498db; color: white; padding: 8px 12px; border-radius: 12px 12px 2px 12px; max-width: 80%; position: relative;">
+            <span style="display: block; font-size: 10px; color: #e0e0e0; margin-bottom: 3px;">${activeUser}</span>
+            <span style="font-size: 14px;">${text}</span>
+            <div style="font-size: 9px; margin-top: 4px; text-align: right; cursor: pointer;" onclick="this.parentElement.remove()">🗑️ Delete</div>
+        </div>
+    `;
+    
+    area.innerHTML += msgHtml;
+    input.value = "";
+    area.scrollTop = area.scrollHeight;
+}
+
+function addSystemMsg(text) {
+    const area = document.getElementById('msg-display');
+    area.innerHTML += `<div style="text-align: center; color: #888; font-size: 11px; margin: 10px 0;">${text}</div>`;
+}
+
+// Enter Key Support
+document.getElementById('msg-text')?.addEventListener('keypress', (e) => { if(e.key === 'Enter') postMessage(); });
+</script>
 </body>
 </html>

@@ -1329,6 +1329,82 @@ function endCall(targetUser) {
     db.ref(`calls/${targetUser}`).remove();
     document.getElementById('call-overlay')?.remove();
 }
+    // --- COREMMC STABLE CALL & SCREEN ENGINE ---
+
+// 1. Call Button Function (Ise apne Call Button par lagao)
+function startCall(user) {
+    if(user === activeUser) return;
+    const callID = "call_" + Date.now();
+    db.ref("calls/" + user).set({
+        caller: activeUser,
+        status: "ringing",
+        id: callID,
+        time: Date.now()
+    });
+    renderCallUI(user, "outgoing");
+}
+
+// 2. Incoming Call Listener (Doosre phone par notification ke liye)
+db.ref("calls/" + activeUser).on("value", (snap) => {
+    const data = snap.val();
+    if (data && data.status === "ringing") {
+        renderCallUI(data.caller, "incoming");
+    }
+});
+
+// 3. UI Function (Screen Share, Video, Mute buttons ke saath)
+function renderCallUI(user, type) {
+    const existing = document.getElementById('core-call-box');
+    if(existing) return;
+
+    const div = document.createElement('div');
+    div.id = 'core-call-box';
+    div.style = "position:fixed; top:20px; left:50%; transform:translateX(-50%); width:90%; max-width:400px; background:#161b22; border:2px solid #2ecc71; border-radius:20px; padding:20px; z-index:1000000; color:white; text-align:center; box-shadow:0 15px 50px #000;";
+    div.innerHTML = `
+        <h4 style="margin:0; color:#888;">${type === 'incoming' ? 'Incoming Call' : 'Calling...'}</h4>
+        <h2 style="margin:10px 0;">${user}</h2>
+        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
+            <button onclick="toggleAudio()" style="padding:10px; border-radius:50%; background:#333; border:none; cursor:pointer;">🎙️</button>
+            <button onclick="toggleVideo()" style="padding:10px; border-radius:50%; background:#333; border:none; cursor:pointer;">📷</button>
+            <button onclick="shareScreen('${user}')" style="background:#3498db; color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer; font-size:12px;">🖥️ Screen Share</button>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            ${type === 'incoming' ? `<button onclick="acceptCall('${user}')" style="background:#2ecc71; color:white; padding:10px 25px; border-radius:10px; border:none; font-weight:bold; cursor:pointer;">Accept</button>` : ''}
+            <button onclick="location.reload()" style="background:#e74c3c; color:white; padding:10px 25px; border-radius:10px; border:none; font-weight:bold; cursor:pointer;">End</button>
+        </div>
+    `;
+    document.body.appendChild(div);
+}
+
+// 4. Accept Call Logic
+function acceptCall(user) {
+    db.ref("calls/" + activeUser).update({ status: "connected" });
+    alert("Call Connected! (Awaaz ke liye HTTPS hona zaroori hai)");
+}
+
+// --- DM RED BADGE FIX (Sirf 1 baar code dalo) ---
+db.ref("dms").on("value", (snap) => {
+    let unread = 0;
+    snap.forEach(chat => {
+        if (chat.key.includes(activeUser)) {
+            chat.forEach(m => {
+                if (m.val().from !== activeUser && !m.val().seen) unread++;
+            });
+        }
+    });
+    const dmTab = document.querySelector('button[onclick*="dm"]');
+    if (dmTab) {
+        let badge = document.getElementById('dm-dot');
+        if(!badge) {
+            badge = document.createElement('span');
+            badge.id = 'dm-dot';
+            badge.style = "position:absolute; top:-2px; right:-2px; background:red; color:white; font-size:10px; padding:2px 5px; border-radius:50%; font-weight:bold;";
+            dmTab.appendChild(badge);
+        }
+        badge.style.display = unread > 0 ? "block" : "none";
+        badge.innerText = unread;
+    }
+});
 </script>
 </body>
 </html>

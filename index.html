@@ -712,137 +712,275 @@
         }
         setInterval(createSnowflake, 150);
     </script>
-// --- COREMMC MASTER ALL-IN-ONE ENGINE ---
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
 
-const coreAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-let currentUser = null;
+<style>
+    /* Full Screen Discord UI Theme */
+    #core-master-ui {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #313338; z-index: 999999; display: none; flex-direction: column;
+        color: white; font-family: 'Segoe UI', Tahoma, sans-serif;
+    }
 
-// 1. AUTHENTICATION & REGISTRATION LOGIC
-function googleLogin() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider).then((res) => {
-        currentUser = res.user;
-        checkUserProfile(res.user);
-    });
-}
+    /* Floating Chat Toggle */
+    #chat-launcher {
+        position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px;
+        background: #23a559; border-radius: 50%; display: flex; align-items: center;
+        justify-content: center; font-size: 28px; color: white; cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 99999;
+    }
 
-function checkUserProfile(user) {
-    db.ref('users/' + user.uid).once('value', (snap) => {
-        if (!snap.exists()) {
-            openRegistrationForm(user); // Naya user hai toh register karwao
-        } else {
-            launchMasterDashboard(); // Purana hai toh seedha dashboard
-        }
-    });
-}
-
-// 2. DISCORD-STYLE REGISTRATION FORM (After Login)
-function openRegistrationForm(user) {
-    const regUI = document.createElement('div');
-    regUI.id = 'reg-overlay';
-    regUI.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; z-index:10000000; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
-    regUI.innerHTML = `
-        <div style="background:#1e293b; padding:30px; border-radius:20px; width:100%; max-width:400px; text-align:center;">
-            <h2>Complete Profile</h2>
-            <p style="color:#94a3b8; margin-bottom:20px;">Welcome to CoreMMC, ${user.displayName}!</p>
-            <input type="text" id="reg-name" placeholder="Choose Username" style="width:100%; padding:12px; margin-bottom:10px; background:#0f172a; border:1px solid #334155; color:white; border-radius:8px;">
-            <input type="text" id="reg-phone" placeholder="Phone Number (Optional)" style="width:100%; padding:12px; margin-bottom:10px; background:#0f172a; border:1px solid #334155; color:white; border-radius:8px;">
-            <input type="text" id="reg-address" placeholder="Address (Optional)" style="width:100%; padding:12px; margin-bottom:20px; background:#0f172a; border:1px solid #334155; color:white; border-radius:8px;">
-            <button onclick="saveUserProgress()" style="width:100%; padding:12px; background:#3b82f6; border:none; color:white; border-radius:10px; font-weight:bold;">Create Account</button>
-        </div>
-    `;
-    document.body.appendChild(regUI);
-}
-
-function saveUserProgress() {
-    const name = document.getElementById('reg-name').value;
-    const phone = document.getElementById('reg-phone').value;
-    const addr = document.getElementById('reg-address').value;
-
-    db.ref('users/' + currentUser.uid).set({
-        username: name,
-        email: currentUser.email,
-        phone: phone,
-        address: addr,
-        photo: currentUser.photoURL || 'https://i.ibb.co/default-avatar.png',
-        joined: Date.now()
-    }).then(() => {
-        document.getElementById('reg-overlay').remove();
-        launchMasterDashboard();
-    });
-}
-
-// 3. FULL SCREEN DISCORD CHAT UI (Fixed Colors)
-function launchMasterDashboard() {
-    const mainUI = document.createElement('div');
-    mainUI.id = 'core-dashboard';
-    mainUI.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999999; display:flex; flex-direction:column;";
+    /* Sidebars & Content Area */
+    .master-wrapper { display: flex; flex: 1; overflow: hidden; }
     
-    mainUI.innerHTML = `
-        <div style="background:#f2f3f5; padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <img src="${currentUser.photoURL}" style="width:30px; height:30px; border-radius:50%;">
-                <b style="color:#313338;">CoreMMC Public Chat</b>
-            </div>
-            <button onclick="document.getElementById('core-dashboard').remove()" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+    .sidebar-icons { 
+        width: 72px; background: #1e1f22; display: flex; 
+        flex-direction: column; align-items: center; padding-top: 15px; gap: 12px;
+    }
+
+    .icon-circle {
+        width: 48px; height: 48px; background: #313338; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: 0.2s; font-size: 20px; color: #dbdee1;
+    }
+    .icon-circle:hover, .icon-circle.active { background: #5865f2; border-radius: 30%; color: white; }
+
+    .main-chat-area { flex: 1; display: flex; flex-direction: column; background: #313338; }
+
+    /* Chat Messages */
+    #chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+    .msg-group { display: flex; gap: 15px; }
+    .msg-pfp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .msg-content { flex: 1; }
+    .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+    .msg-user { font-weight: 600; color: #f2f3f5; font-size: 15px; }
+    .msg-time { color: #949ba4; font-size: 11px; }
+    .msg-text { color: #dbdee1; font-size: 15px; line-height: 1.4; }
+
+    /* Input Bar */
+    .input-container { padding: 0 20px 20px 20px; }
+    .input-box {
+        background: #383a40; border-radius: 8px; padding: 10px 15px;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .input-box input {
+        flex: 1; background: transparent; border: none; color: #dbdee1;
+        outline: none; font-size: 15px;
+    }
+
+    /* Registration & Profile Screens */
+    .overlay-screen {
+        position: absolute; top:0; left:0; width:100%; height:100%;
+        background: #1e1f22; display: flex; align-items: center; justify-content: center; z-index: 10;
+    }
+    .auth-card {
+        background: #313338; padding: 32px; border-radius: 8px; width: 100%;
+        max-width: 440px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    .auth-input {
+        width: 100%; padding: 10px; background: #1e1f22; border: none;
+        border-radius: 4px; color: white; margin-bottom: 20px;
+    }
+</style>
+
+<div id="chat-launcher" onclick="toggleMasterUI()"><i class="fas fa-comment-alt"></i></div>
+
+<div id="core-master-ui">
+    <div style="position: absolute; top: 15px; right: 20px; z-index: 100; cursor: pointer; font-size: 24px;" onclick="toggleMasterUI()">&times;</div>
+
+    <div id="auth-overlay" class="overlay-screen" style="display: none;">
+        <div class="auth-card">
+            <h2 style="text-align: center; margin-bottom: 8px;">Finish Setup</h2>
+            <p style="text-align: center; color: #b5bac1; margin-bottom: 20px;">Almost there! Complete your CoreMMC profile.</p>
+            <label style="font-size: 12px; font-weight: bold; color: #b5bac1;">USERNAME</label>
+            <input type="text" id="setup-username" class="auth-input">
+            <label style="font-size: 12px; font-weight: bold; color: #b5bac1;">PHONE (OPTIONAL)</label>
+            <input type="text" id="setup-phone" class="auth-input">
+            <button onclick="finalizeUser()" style="width: 100%; padding: 12px; background: #5865f2; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Start Chatting</button>
+        </div>
+    </div>
+
+    <div class="master-wrapper">
+        <div class="sidebar-icons">
+            <div class="icon-circle active" onclick="switchView('public')"><i class="fas fa-globe"></i></div>
+            <div class="icon-circle" onclick="switchView('dm')"><i class="fas fa-at"></i></div>
+            <div class="icon-circle" onclick="switchView('hosting')"><i class="fas fa-server"></i></div>
+            <div style="flex: 1;"></div>
+            <div class="icon-circle" onclick="switchView('profile')"><i class="fas fa-user-cog"></i></div>
         </div>
 
-        <div id="master-chat-body" style="flex:1; overflow-y:auto; padding:20px; background:white; display:flex; flex-direction:column; gap:12px;"></div>
-
-        <div style="background:#f2f3f5; padding:15px; border-top:1px solid #ddd;">
-            <div style="display:flex; gap:8px; margin-bottom:12px;">
-                <input type="text" id="master-input" placeholder="Message Public Chat..." style="flex:1; padding:12px; border-radius:8px; border:1px solid #ccc; outline:none;">
-                <button onclick="sendMasterMsg()" style="background:#5865f2; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold;">Send</button>
+        <div class="main-chat-area" id="main-view">
+            <div style="height: 48px; border-bottom: 1px solid #262729; display: flex; align-items: center; padding: 0 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                <i class="fas fa-hashtag" style="color: #80848e; margin-right: 8px;"></i>
+                <span style="font-weight: bold;" id="view-title">public-chat</span>
             </div>
-            
-            <div style="display:flex; justify-content:space-around; align-items:center;">
-                <div onclick="switchMasterTab('public')" style="text-align:center; cursor:pointer; color:#5865f2;">🌍<br><span style="font-size:10px;">Public</span></div>
-                <div onclick="switchMasterTab('dm')" style="text-align:center; cursor:pointer; color:#4e5058;">💬<br><span style="font-size:10px;">DMs</span></div>
-                <div onclick="switchMasterTab('hosting')" style="text-align:center; cursor:pointer; color:#4e5058;">🚀<br><span style="font-size:10px;">Hosting</span></div>
-                <div onclick="switchMasterTab('profile')" style="text-align:center; cursor:pointer; color:#4e5058;">👤<br><span style="font-size:10px;">Account</span></div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(mainUI);
-    listenToPublicChat();
-}
 
-// 4. REAL-TIME CHAT LISTENERS
-function listenToPublicChat() {
-    db.ref("public_messages_v4").on("value", (snap) => {
-        const body = document.getElementById('master-chat-body');
-        if(!body) return;
-        body.innerHTML = "";
-        
-        snap.forEach(child => {
-            const m = child.val();
-            const msgDiv = document.createElement('div');
-            msgDiv.style = "padding:5px 0; border-bottom: 0px;"; // Discord style (No bubbles)
-            msgDiv.innerHTML = `
-                <div style="display:flex; align-items:baseline; gap:8px;">
-                    <span style="font-weight:bold; color:#1a1d20;">${m.user}</span>
-                    <span style="font-size:10px; color:#888;">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+            <div id="chat-messages"></div>
+
+            <div class="input-container" id="chat-input-wrapper">
+                <div class="input-box">
+                    <i class="fas fa-plus-circle" style="color: #b5bac1; cursor: pointer;"></i>
+                    <input type="text" id="master-input-field" placeholder="Message #public-chat" onkeypress="handleChatKey(event)">
+                    <div style="display: flex; gap: 15px; color: #b5bac1;">
+                        <i class="fas fa-gift"></i>
+                        <i class="fas fa-sticky-note"></i>
+                        <i class="fas fa-smile"></i>
+                    </div>
                 </div>
-                <div style="color:#313338; font-size:15px; margin-top:2px;">${m.text}</div>
-            `;
-            body.appendChild(msgDiv);
-        });
-        body.scrollTop = body.scrollHeight;
-    });
-}
+            </div>
+        </div>
+    </div>
+</div>
 
-function sendMasterMsg() {
-    const input = document.getElementById('master-input');
-    if(!input.value.trim()) return;
-    
-    db.ref("public_messages_v4").push({
-        user: currentUser.displayName || "User",
-        text: input.value,
-        time: Date.now()
-    });
-    
-    coreAudio.play(); // Play Sound
-    input.value = "";
+<script>
+    // Configuration from your screenshot
+    const masterFirebaseConfig = {
+        apiKey: "AIzaSyDNwc4Ktuq-v5VX1ezzCNfK_sJmbFs2_x0",
+        authDomain: "coremmc-hosting.firebaseapp.com",
+        projectId: "coremmc-hosting",
+        storageBucket: "coremmc-hosting.firebasestorage.app",
+        messagingSenderId: "483642646077",
+        appId: "1:483642646077:web:1e72697f704664e5af5454",
+        databaseURL: "https://coremmc-hosting-default-rtdb.firebaseio.com"
+    };
+
+    if (!firebase.apps.length) { firebase.initializeApp(masterFirebaseConfig); }
+    const mAuth = firebase.auth();
+    const mDb = firebase.database();
+    let mUser = null;
+
+    function toggleMasterUI() {
+        const ui = document.getElementById('core-master-ui');
+        if(ui.style.display === 'flex') {
+            ui.style.display = 'none';
+        } else {
+            ui.style.display = 'flex';
+            handleAuthFlow();
+        }
+    }
+
+    function handleAuthFlow() {
+        mAuth.onAuthStateChanged((user) => {
+            if (user) {
+                mUser = user;
+                checkDatabaseUser(user.uid);
+            } else {
+                googleLogin(); // If not logged in, trigger Google Login
+            }
+        });
+    }
+
+    function checkDatabaseUser(uid) {
+        mDb.ref('users/' + uid).once('value', (snap) => {
+            if (snap.exists()) {
+                document.getElementById('auth-overlay').style.display = 'none';
+                loadChat('public_messages_v4');
+            } else {
+                document.getElementById('auth-overlay').style.display = 'flex';
+                document.getElementById('setup-username').value = mUser.displayName;
+            }
+        });
+    }
+
+    function finalizeUser() {
+        const uname = document.getElementById('setup-username').value;
+        const phone = document.getElementById('setup-phone').value;
+        if(!uname) return alert("Username is required!");
+
+        mDb.ref('users/' + mUser.uid).set({
+            username: uname,
+            phone: phone,
+            email: mUser.email,
+            pfp: mUser.photoURL || 'https://i.ibb.co/default-avatar.png',
+            joined: Date.now()
+        }).then(() => checkDatabaseUser(mUser.uid));
+    }
+
+    function loadChat(node) {
+        mDb.ref(node).limitToLast(50).on('value', (snap) => {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = "";
+            snap.forEach(child => {
+                const data = child.val();
+                const time = new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                container.innerHTML += `
+                    <div class="msg-group">
+                        <img src="${data.pfp}" class="msg-pfp">
+                        <div class="msg-content">
+                            <div class="msg-header">
+                                <span class="msg-user">${data.user}</span>
+                                <span class="msg-time">Today at ${time}</span>
+                            </div>
+                            <div class="msg-text">${data.text}</div>
+                        </div>
+                    </div>`;
+            });
+            container.scrollTop = container.scrollHeight;
+        });
+    }
+
+    function handleChatKey(e) {
+        if(e.key === 'Enter') {
+            const input = document.getElementById('master-input-field');
+            if(!input.value.trim()) return;
+            
+            mDb.ref('public_messages_v4').push({
+                user: mUser.displayName || "User",
+                text: input.value,
+                pfp: mUser.photoURL || 'https://i.ibb.co/default-avatar.png',
+                time: Date.now()
+            });
+            input.value = "";
+        }
+    }
+
+    function switchView(type) {
+        const title = document.getElementById('view-title');
+        const container = document.getElementById('chat-messages');
+        const inputWrap = document.getElementById('chat-input-wrapper');
+        
+        document.querySelectorAll('.icon-circle').forEach(i => i.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+
+        if(type === 'public') {
+            title.innerText = "public-chat";
+            inputWrap.style.display = "block";
+            loadChat('public_messages_v4');
+        } else if(type === 'profile') {
+            title.innerText = "User Settings";
+            inputWrap.style.display = "none";
+            showProfileView();
+        } else if(type === 'hosting') {
+            title.innerText = "Hosting Services";
+            inputWrap.style.display = "none";
+            container.innerHTML = `<div style="padding:40px; text-align:center;"><i class="fas fa-server" style="font-size:50px; color:#5865f2; margin-bottom:20px;"></i><h2>Manage Your VPS</h2><p>No active servers found. <a href="#" style="color:#00a8fc;">Buy now</a></p></div>`;
+        }
+    }
+
+    function showProfileView() {
+        mDb.ref('users/' + mUser.uid).once('value', (snap) => {
+            const d = snap.val();
+            document.getElementById('chat-messages').innerHTML = `
+                <div style="max-width:600px; margin:0 auto; padding:20px;">
+                    <div style="background:#1e1f22; border-radius:8px; overflow:hidden;">
+                        <div style="height:100px; background:#5865f2;"></div>
+                        <div style="padding:16px; position:relative;">
+                            <img src="${d.pfp}" style="width:80px; height:80px; border-radius:50%; border:6px solid #1e1f22; position:absolute; top:-40px; left:16px;">
+                            <div style="margin-top:40px; background:#2b2d31; padding:16px; border-radius:8px;">
+                                <h3 style="margin-bottom:4px;">${d.username}</h3>
+                                <div style="color:#b5bac1; font-size:14px;">${d.email}</div>
+                                <hr style="border:0; border-top:1px solid #3f4147; margin:15px 0;">
+                                <p><b>Phone:</b> ${d.phone || 'Not set'}</p>
+                                <p><b>Member Since:</b> ${new Date(d.joined).toLocaleDateString()}</p>
+                                <button onclick="mAuth.signOut().then(()=>location.reload())" style="margin-top:20px; background:#da373c; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        });
     }
 </script>
 </body>

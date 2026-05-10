@@ -906,5 +906,160 @@ function deleteMsg(key) {
 // Enter Key Support
 document.getElementById('msg-text')?.addEventListener('keypress', (e) => { if(e.key === 'Enter') postMessage(); });
 </script>
+    <div id="community-chat-wrapper" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: 'Poppins', sans-serif;">
+    
+    <div id="chat-btn" onclick="toggleMainChat()" style="width: 65px; height: 65px; background: linear-gradient(135deg, #2ecc71, #3498db); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 5px 20px rgba(0,0,0,0.4);">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg>
+    </div>
+
+    <div id="chat-container" style="display: none; position: absolute; bottom: 80px; right: 0; width: 380px; height: 550px; background: #0d1117; border-radius: 20px; border: 1px solid #30363d; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+        
+        <div style="display: flex; background: #161b22; border-bottom: 1px solid #30363d; padding: 10px;">
+            <button onclick="showTab('home')" style="flex:1; background:none; border:none; color:white; cursor:pointer; font-weight:bold; font-size:12px;">🏠 HOME</button>
+            <button onclick="showTab('dm')" style="flex:1; background:none; border:none; color:white; cursor:pointer; font-weight:bold; font-size:12px;">💬 DM</button>
+            <button onclick="showTab('profile')" style="flex:1; background:none; border:none; color:white; cursor:pointer; font-weight:bold; font-size:12px;">👤 PROFILE</button>
+        </div>
+
+        <div id="tab-home" class="chat-tab" style="display: flex; flex-direction: column; height: 100%;">
+            <div id="public-msg-area" style="flex: 1; padding: 15px; overflow-y: auto; background: #0d1117;"></div>
+            <div style="padding: 10px; display: flex; gap: 5px;">
+                <input type="text" id="public-input" placeholder="Public message..." style="flex:1; padding: 10px; border-radius: 8px; border: 1px solid #333; background: #21262d; color: white;">
+                <button onclick="sendPublicMsg()" style="background: #2ecc71; border: none; padding: 10px 15px; border-radius: 8px; color: white; cursor: pointer;">Send</button>
+            </div>
+        </div>
+
+        <div id="tab-dm" class="chat-tab" style="display: none; flex-direction: column; height: 100%;">
+            <div style="padding: 10px; background: #161b22; font-size: 12px; color: #888; border-bottom: 1px solid #333;">Click a name in Home Chat to DM</div>
+            <div id="dm-list" style="flex: 1; padding: 10px; overflow-y: auto;">
+                </div>
+        </div>
+
+        <div id="tab-profile" class="chat-tab" style="display: none; padding: 30px; text-align: center; color: white;">
+            <div style="width: 80px; height: 80px; background: #3498db; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 30px; border: 3px solid #2ecc71;">
+                <span id="prof-initial">U</span>
+            </div>
+            <h2 id="prof-name" style="margin-bottom: 5px;">User Name</h2>
+            <p style="color: #2ecc71; font-size: 12px;">CoreMMC Verified Member</p>
+            <div style="margin-top: 20px; background: #161b22; padding: 15px; border-radius: 10px; text-align: left;">
+                <div style="font-size: 13px; margin-bottom: 5px;">Status: <span style="color: #2ecc71;">● Online</span></div>
+                <div style="font-size: 13px;">Rank: <span style="color: #3498db;">Hosting Customer</span></div>
+            </div>
+            <button onclick="logout()" style="margin-top: 20px; background: #e74c3c; border: none; padding: 10px 20px; border-radius: 8px; color: white; cursor: pointer;">Logout</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- CONFIGURATION ---
+const firebaseConfig = {
+    apiKey: "AIzaSyDZGj9ivM224fKZjzt8d9lSaNhcb-_IPjE",
+    authDomain: "coremmc-chat.firebaseapp.com",
+    databaseURL: "https://coremmc-chat-default-rtdb.firebaseio.com",
+    projectId: "coremmc-chat",
+    storageBucket: "coremmc-chat.firebasestorage.app",
+    messagingSenderId: "215541867812",
+    appId: "1:215541867812:web:0c9e1fcd21ae8a840effb1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let activeUser = localStorage.getItem('chatUser') || "";
+let forwardData = "";
+
+// --- UI FUNCTIONS ---
+function toggleMainChat() {
+    const container = document.getElementById('chat-container');
+    container.style.display = (container.style.display === 'none') ? 'flex' : 'none';
+    if(activeUser) {
+        showTab('home');
+        updateProfileUI();
+    } else {
+        let name = prompt("Enter your Name for CoreMMC Chat:");
+        if(name) {
+            activeUser = name;
+            localStorage.setItem('chatUser', name);
+            updateProfileUI();
+        }
+    }
+}
+
+function showTab(tabName) {
+    document.querySelectorAll('.chat-tab').forEach(t => t.style.display = 'none');
+    document.getElementById('tab-' + tabName).style.display = 'flex';
+    if(tabName === 'home') loadPublicMessages();
+}
+
+function updateProfileUI() {
+    document.getElementById('prof-name').innerText = activeUser;
+    document.getElementById('prof-initial').innerText = activeUser.charAt(0).toUpperCase();
+}
+
+// --- CORE LOGIC ---
+function sendPublicMsg() {
+    const input = document.getElementById('public-input');
+    if(!input.value.trim()) return;
+    db.ref("public_chat").push().set({
+        user: activeUser,
+        msg: input.value,
+        time: Date.now()
+    });
+    input.value = "";
+}
+
+function loadPublicMessages() {
+    db.ref("public_chat").limitToLast(30).on("value", (snap) => {
+        const area = document.getElementById('public-msg-area');
+        area.innerHTML = "";
+        snap.forEach(child => {
+            const data = child.val();
+            const isMe = data.user === activeUser;
+            area.innerHTML += `
+                <div style="margin-bottom: 10px; align-self: ${isMe ? 'flex-end' : 'flex-start'};">
+                    <span style="font-size: 11px; color: #888; cursor: pointer;" onclick="startDM('${data.user}')">${data.user}</span>
+                    <div style="background: ${isMe ? '#3498db' : '#21262d'}; color: white; padding: 10px; border-radius: 10px; max-width: 250px;">
+                        ${data.msg}
+                        <div style="font-size: 9px; margin-top: 5px; opacity: 0.5;">
+                            <span onclick="copyMsg('${data.msg}')" style="cursor:pointer">📋 Copy</span> | 
+                            <span onclick="setForward('${data.msg}')" style="cursor:pointer">➡️ Forward</span>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        area.scrollTop = area.scrollHeight;
+    });
+}
+
+// --- DM & UTILITIES ---
+function copyMsg(text) {
+    navigator.clipboard.writeText(text);
+    alert("Message Copied!");
+}
+
+function setForward(text) {
+    forwardData = text;
+    alert("Message ready to forward! Now go to DM and paste/send.");
+}
+
+function startDM(targetUser) {
+    if(targetUser === activeUser) return;
+    let msg = prompt(`Send Private Message to ${targetUser}:`, forwardData);
+    if(msg) {
+        const chatID = [activeUser, targetUser].sort().join("_");
+        db.ref("dms/" + chatID).push().set({
+            from: activeUser,
+            msg: msg,
+            time: Date.now()
+        });
+        alert("DM Sent!");
+        showTab('dm');
+        forwardData = ""; // reset
+    }
+}
+
+function logout() {
+    localStorage.removeItem('chatUser');
+    location.reload();
+}
+</script>
 </body>
 </html>

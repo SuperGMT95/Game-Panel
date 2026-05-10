@@ -1293,28 +1293,6 @@ function acceptCall(user) {
     db.ref("calls/" + activeUser).update({ status: "connected" });
     alert("Call Connected! (Awaaz ke liye HTTPS hona zaroori hai)");
 }
-
-// --- DM RED BADGE FIX (Sirf 1 baar code dalo) ---
-db.ref("dms").on("value", (snap) => {
-    let unread = 0;
-    snap.forEach(chat => {
-        if (chat.key.includes(activeUser)) {
-            chat.forEach(m => {
-                if (m.val().from !== activeUser && !m.val().seen) unread++;
-            });
-        }
-    });
-    const dmTab = document.querySelector('button[onclick*="dm"]');
-    if (dmTab) {
-        let badge = document.getElementById('dm-dot');
-        if(!badge) {
-            badge = document.createElement('span');
-            badge.id = 'dm-dot';
-            badge.style = "position:absolute; top:-2px; right:-2px; background:red; color:white; font-size:10px; padding:2px 5px; border-radius:50%; font-weight:bold;";
-            dmTab.appendChild(badge);
-        }
-        badge.style.display = unread > 0 ? "block" : "none";
-        badge.innerText = unread;
     }
 });
 </script>

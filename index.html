@@ -1329,6 +1329,106 @@ function endCall(targetUser) {
     db.ref(`calls/${targetUser}`).remove();
     document.getElementById('call-overlay')?.remove();
 }
+    // --- COREMMC PRO VOICE & MULTITASKING MODULE ---
+
+let remoteAudio = new Audio();
+remoteAudio.autoplay = true;
+
+// 1. CALL UI FIX (Floating Bar for Multitasking)
+function showCallingScreen(user, type) {
+    const existing = document.getElementById('call-overlay');
+    if(existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'call-overlay';
+    // Isse call screen upar ek choti patti (bar) ban jayegi, poori screen block nahi hogi
+    overlay.style = "position:fixed; top:10px; left:50%; transform:translateX(-50%); width:90%; max-width:400px; background:#1c2128; z-index:30000; display:flex; align-items:center; justify-content:space-between; color:white; padding:10px 15px; border-radius:15px; border:2px solid #2ecc71; box-shadow:0 10px 30px rgba(0,0,0,0.5);";
+    
+    overlay.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:35px; height:35px; background:#3498db; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px;">👤</div>
+            <div>
+                <div style="font-size:12px; color:#888;">${type === 'incoming' ? 'Incoming...' : 'Calling...'}</div>
+                <div style="font-weight:bold; color:#2ecc71;">${user}</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            ${type === 'incoming' ? `<button id="accept-call-btn" style="background:#2ecc71; border:none; color:white; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer;">Accept</button>` : ''}
+            <button onclick="endCall('${user}')" style="background:#e74c3c; border:none; color:white; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer;">End</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    if (type === 'incoming') {
+        document.getElementById('accept-call-btn').onclick = () => connectAudio(user, false);
+    } else {
+        connectAudio(user, true);
+    }
+}
+
+// 2. AUDIO STREAM FIX (Ensuring voice plays)
+async function connectAudio(targetUser, isCaller) {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        peerConnection = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = (event) => {
+            console.log("Remote stream received");
+            remoteAudio.srcObject = event.streams[0];
+            // Browser policy fix: play() explicitly call karna padta hai
+            remoteAudio.play().catch(e => console.error("Audio play failed:", e));
+        };
+
+        // ICE Candidate handling (Connection pakka karne ke liye)
+        peerConnection.onicecandidate = (e) => {
+            if (e.candidate) {
+                db.ref(`calls/${targetUser}/ice`).push(JSON.stringify(e.candidate));
+            }
+        };
+
+        db.ref(`calls/${activeUser}/ice`).on("child_added", (snap) => {
+            const cand = JSON.parse(snap.val());
+            peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+        });
+
+        if (isCaller) {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(offer));
+        }
+
+        db.ref(`calls/${activeUser}/signal`).on("value", async (snap) => {
+            const signal = snap.val();
+            if (!signal) return;
+            const data = JSON.parse(signal);
+            if (data.type === "offer" && !isCaller) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(answer));
+            } else if (data.type === "answer" && isCaller) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+            }
+        });
+        
+        if(!isCaller) document.getElementById('accept-call-btn').innerText = "Live 🟢";
+
+    } catch (err) {
+        alert("Mic Error: " + err.message);
+    }
+}
+
+// 3. CALL END & CLEANUP
+function endCall(targetUser) {
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (peerConnection) peerConnection.close();
+    db.ref(`calls/${activeUser}`).remove();
+    db.ref(`calls/${targetUser}`).remove();
+    document.getElementById('call-overlay')?.remove();
+    remoteAudio.srcObject = null;
+}
 </script>
 </body>
 </html>

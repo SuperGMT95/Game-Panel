@@ -1329,242 +1329,140 @@ function endCall(targetUser) {
     db.ref(`calls/${targetUser}`).remove();
     document.getElementById('call-overlay')?.remove();
 }
-   // --- COREMMC ULTIMATE RECOVERY CODE (CALL + SCREEN + BADGE) ---
+       // --- COREMMC UNIQUE PATCH (NO CONFLICT) ---
 
-// 1. DM RED BADGE LOGIC (As per your request)
-let lastCheckedCount = 0;
-function startBadgeSystem() {
+// 1. RED BADGE SYSTEM (As per your Photo)
+function cmmc_startBadge() {
     db.ref("dms").on("value", (snap) => {
-        let totalUnread = 0;
+        let unread = 0;
         snap.forEach(chat => {
             if (chat.key.includes(activeUser)) {
-                chat.forEach(msg => {
-                    if (msg.val().from !== activeUser && !msg.val().seen) {
-                        totalUnread++;
-                    }
+                chat.forEach(m => {
+                    if (m.val().from !== activeUser && !m.val().seen) unread++;
                 });
             }
         });
-        updateBadgeUI(totalUnread);
-    });
-}
-
-function updateBadgeUI(count) {
-    let badge = document.getElementById('dm-count-badge');
-    if (!badge) {
         const dmTab = document.querySelector('button[onclick*="dm"]');
         if (dmTab) {
-            dmTab.style.position = 'relative';
-            badge = document.createElement('span');
-            badge.id = 'dm-count-badge';
-            badge.style = "position:absolute; top:-5px; right:-2px; background:red; color:white; font-size:10px; padding:2px 6px; border-radius:50%; font-weight:bold; border:2px solid #161b22; display:none;";
-            dmTab.appendChild(badge);
-        }
-    }
-    if (badge) {
-        badge.innerText = count > 9 ? "9+" : count;
-        badge.style.display = count > 0 ? "block" : "none";
-    }
-}
-
-// 2. CALLING & SCREEN SHARE ENGINE
-let pc;
-let myStream;
-
-async function startCall(targetUser) {
-    // UI Create Karna
-    const callUI = document.createElement('div');
-    callUI.id = 'active-call-bar';
-    callUI.style = "position:fixed; top:10px; left:50%; transform:translateX(-50%); width:95%; max-width:450px; background:#1c2128; z-index:100000; padding:15px; border-radius:20px; border:2px solid #3498db; color:white; display:flex; flex-direction:column; gap:10px; box-shadow:0 10px 50px #000;";
-    callUI.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <b>📞 Talking to: <span style="color:#2ecc71;">${targetUser}</span></b>
-            <button onclick="location.reload()" style="background:#e74c3c; border:none; color:white; padding:5px 15px; border-radius:10px; cursor:pointer; font-weight:bold;">End</button>
-        </div>
-        <div style="display:flex; justify-content:center; gap:15px;">
-            <button onclick="toggleMic()" id="m-btn" style="background:#444; border:none; padding:10px; border-radius:50%; cursor:pointer;">🎙️</button>
-            <button onclick="toggleCam()" id="c-btn" style="background:#444; border:none; padding:10px; border-radius:50%; cursor:pointer;">📷</button>
-            <button onclick="shareMyScreen('${targetUser}')" style="background:#3498db; border:none; padding:10px; border-radius:10px; cursor:pointer; font-size:12px; color:white;">🖥️ Share Screen</button>
-        </div>
-        <div id="video-grid" style="display:none; gap:5px; margin-top:5px;">
-            <video id="me" autoplay muted playsinline style="width:48%; border-radius:10px; background:#000;"></video>
-            <video id="you" autoplay playsinline style="width:48%; border-radius:10px; background:#000;"></video>
-        </div>
-    `;
-    document.body.appendChild(callUI);
-
-    // WebRTC Connection Setup
-    pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    
-    myStream.getTracks().forEach(track => pc.addTrack(track, myStream));
-    
-    pc.ontrack = (e) => {
-        const remoteVid = document.getElementById('you');
-        if(remoteVid) remoteVid.srcObject = e.streams[0];
-    };
-
-    // Signaling Offer
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(offer));
-
-    // ICE Candidates
-    pc.onicecandidate = (e) => {
-        if(e.candidate) db.ref(`calls/${targetUser}/ice`).push(JSON.stringify(e.candidate));
-    };
-
-    db.ref(`calls/${activeUser}/ice`).on("child_added", (s) => {
-        pc.addIceCandidate(new RTCIceCandidate(JSON.parse(s.val())));
-    });
-
-    db.ref(`calls/${activeUser}/signal`).on("value", async (s) => {
-        const sig = s.val();
-        if(sig && JSON.parse(sig).type === "answer") {
-            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig)));
+            let b = document.getElementById('cmmc-badge');
+            if(!b) {
+                dmTab.style.position = 'relative';
+                b = document.createElement('span');
+                b.id = 'cmmc-badge';
+                b.style = "position:absolute; top:-5px; right:-2px; background:red; color:white; font-size:10px; padding:2px 6px; border-radius:50%; font-weight:bold; border:2px solid #161b22;";
+                dmTab.appendChild(b);
+            }
+            b.style.display = unread > 0 ? "block" : "none";
+            b.innerText = unread > 9 ? "9+" : unread;
         }
     });
 }
 
-// 3. CONTROLS: MIC, CAM, SCREEN
-function toggleMic() {
-    const audioTrack = myStream.getAudioTracks()[0];
-    audioTrack.enabled = !audioTrack.enabled;
-    document.getElementById('m-btn').style.background = audioTrack.enabled ? "#444" : "red";
-    document.getElementById('m-btn').innerText = audioTrack.enabled ? "🎙️" : "🔇";
-}
-
-async function toggleCam() {
-    const videoGrid = document.getElementById('video-grid');
-    videoGrid.style.display = 'flex';
-    if(myStream.getVideoTracks().length === 0) {
-        const vStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const vTrack = vStream.getVideoTracks()[0];
-        myStream.addTrack(vTrack);
-        pc.addTrack(vTrack, myStream);
-        document.getElementById('me').srcObject = myStream;
-    } else {
-        const vt = myStream.getVideoTracks()[0];
-        vt.enabled = !vt.enabled;
-        document.getElementById('c-btn').style.background = vt.enabled ? "#444" : "red";
-    }
-}
-
-async function shareMyScreen(user) {
-    const scStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-    const scTrack = scStream.getVideoTracks()[0];
-    const sender = pc.getSenders().find(s => s.track.kind === 'video');
-    if(sender) sender.replaceTrack(scTrack);
-    document.getElementById('me').srcObject = scStream;
-}
-
-// Launch Badge System
-setTimeout(startBadgeSystem, 2000);
-// --- COREMMC ULTIMATE WEB-RTC ENGINE ---
-
-// 1. CALL DETECTOR (Listen for incoming calls)
-db.ref("calls/" + activeUser).on("value", (snapshot) => {
-    const callData = snapshot.val();
-    if (callData && callData.type === "offer" && !document.getElementById('call-ui')) {
-        createCallUI(callData.from, "incoming");
+// 2. CALL NOTIFICATION (Showing on other phone)
+db.ref("calls/" + activeUser).on("value", (snap) => {
+    const data = snap.val();
+    if (data && data.type === "request" && !document.getElementById('cmmc-call-ui')) {
+        cmmc_createUI(data.from, "incoming");
     }
 });
 
-// 2. MAIN CALL UI (Floating Panel)
-function createCallUI(targetUser, callType) {
-    const ui = document.createElement('div');
-    ui.id = 'call-ui';
-    ui.style = "position:fixed; top:15px; left:50%; transform:translateX(-50%); width:90%; max-width:420px; background:#161b22; border:2px solid #3498db; border-radius:20px; padding:15px; z-index:1000000; color:white; box-shadow:0 15px 50px rgba(0,0,0,0.8);";
-    ui.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <b style="color:#2ecc71;">📞 ${callType === 'incoming' ? 'Incoming:' : 'Calling:'} ${targetUser}</b>
-            <button onclick="location.reload()" style="background:#e74c3c; border:none; color:white; padding:5px 12px; border-radius:8px; cursor:pointer;">End</button>
+// 3. MAIN UI & RTC LOGIC
+let cmmc_pc, cmmc_stream;
+
+function cmmc_createUI(user, type) {
+    const div = document.createElement('div');
+    div.id = 'cmmc-call-ui';
+    div.style = "position:fixed; top:20px; left:50%; transform:translateX(-50%); width:90%; max-width:400px; background:#1c2128; border:2px solid #3498db; border-radius:20px; padding:20px; z-index:999999; color:white; text-align:center; box-shadow:0 10px 50px #000;";
+    div.innerHTML = `
+        <h3 style="margin:0;">${type === 'incoming' ? 'Incoming Call' : 'Calling...'}</h3>
+        <h2 style="color:#2ecc71;">${user}</h2>
+        <div style="display:flex; justify-content:center; gap:10px; margin:15px 0;">
+            <button onclick="cmmc_mute()" id="cmmc-m" style="padding:10px; border-radius:50%; background:#444; border:none; cursor:pointer;">🎙️</button>
+            <button onclick="cmmc_vid()" id="cmmc-v" style="padding:10px; border-radius:50%; background:#444; border:none; cursor:pointer;">📷</button>
+            <button onclick="cmmc_share('${user}')" style="background:#3498db; color:white; border:none; padding:10px; border-radius:10px; cursor:pointer; font-size:12px;">🖥️ Screen</button>
         </div>
-        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
-            <button onclick="toggleAudio()" id="mic-btn" style="padding:10px; border-radius:50%; background:#333; border:none; cursor:pointer;">🎙️</button>
-            <button onclick="toggleVideo()" id="cam-btn" style="padding:10px; border-radius:50%; background:#333; border:none; cursor:pointer;">📷</button>
-            <button onclick="startScreenShare('${targetUser}')" style="background:#3498db; color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer; font-size:12px;">🖥️ Screen Share</button>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            ${type === 'incoming' ? `<button onclick="cmmc_accept('${user}')" style="background:#2ecc71; color:white; padding:10px 20px; border-radius:10px; border:none; font-weight:bold; cursor:pointer;">Accept</button>` : ''}
+            <button onclick="location.reload()" style="background:#e74c3c; color:white; padding:10px 20px; border-radius:10px; border:none; font-weight:bold; cursor:pointer;">End</button>
         </div>
-        <div id="video-box" style="display:none; gap:5px; height:150px;">
-            <video id="local-v" autoplay muted playsinline style="width:50%; background:black; border-radius:10px;"></video>
-            <video id="remote-v" autoplay playsinline style="width:50%; background:black; border-radius:10px;"></video>
-        </div>
-        ${callType === 'incoming' ? `<button onclick="answerCall('${targetUser}')" id="ans-btn" style="width:100%; background:#2ecc71; color:white; padding:10px; border-radius:10px; border:none; font-weight:bold; margin-top:5px; cursor:pointer;">Accept Call</button>` : ''}
-    `;
-    document.body.appendChild(ui);
+        <div id="cmmc-v-box" style="display:none; margin-top:15px; gap:5px;">
+            <video id="cmmc-local" autoplay muted playsinline style="width:48%; border-radius:10px; background:black;"></video>
+            <video id="cmmc-remote" autoplay playsinline style="width:48%; border-radius:10px; background:black;"></video>
+        </div>`;
+    document.body.appendChild(div);
 }
 
-// 3. WEBRTC LOGIC (The Brain)
-let pc, myStream;
-
-async function startCall(target) {
-    createCallUI(target, "outgoing");
-    setupRTC(target, true);
+async function cmmc_accept(target) {
+    cmmc_setupRTC(target, false);
 }
 
-async function answerCall(target) {
-    document.getElementById('ans-btn').style.display = 'none';
-    setupRTC(target, false);
-}
+async function cmmc_setupRTC(target, isCaller) {
+    cmmc_pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    cmmc_stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    
+    cmmc_stream.getTracks().forEach(t => cmmc_pc.addTrack(t, cmmc_stream));
+    cmmc_pc.ontrack = (e) => { document.getElementById('cmmc-remote').srcObject = e.streams[0]; };
 
-async function setupRTC(target, isCaller) {
-    pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-
-    myStream.getTracks().forEach(track => pc.addTrack(track, myStream));
-    pc.ontrack = (e) => { document.getElementById('remote-v').srcObject = e.streams[0]; };
-
-    pc.onicecandidate = (e) => {
-        if (e.candidate) db.ref(`signals/${target}/ice`).push(JSON.stringify(e.candidate));
+    cmmc_pc.onicecandidate = (e) => {
+        if (e.candidate) db.ref(`sig/${target}/ice`).push(JSON.stringify(e.candidate));
     };
 
-    db.ref(`signals/${activeUser}/ice`).on("child_added", (s) => {
-        pc.addIceCandidate(new RTCIceCandidate(JSON.parse(s.val())));
+    db.ref(`sig/${activeUser}/ice`).on("child_added", (s) => {
+        cmmc_pc.addIceCandidate(new RTCIceCandidate(JSON.parse(s.val())));
     });
 
     if (isCaller) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        db.ref(`calls/${target}`).set({ type: "offer", from: activeUser });
-        db.ref(`signals/${target}/sdp`).set(JSON.stringify(offer));
+        const offer = await cmmc_pc.createOffer();
+        await cmmc_pc.setLocalDescription(offer);
+        db.ref(`calls/${target}`).set({ type: "request", from: activeUser });
+        db.ref(`sig/${target}/sdp`).set(JSON.stringify(offer));
     }
 
-    db.ref(`signals/${activeUser}/sdp`).on("value", async (s) => {
-        const data = s.val(); if (!data) return;
-        const sdp = JSON.parse(data);
+    db.ref(`sig/${activeUser}/sdp`).on("value", async (s) => {
+        const d = s.val(); if (!d) return;
+        const sdp = JSON.parse(d);
         if (sdp.type === "offer" && !isCaller) {
-            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-            const ans = await pc.createAnswer();
-            await pc.setLocalDescription(ans);
-            db.ref(`signals/${target}/sdp`).set(JSON.stringify(ans));
+            await cmmc_pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            const ans = await cmmc_pc.createAnswer();
+            await cmmc_pc.setLocalDescription(ans);
+            db.ref(`sig/${target}/sdp`).set(JSON.stringify(ans));
         } else if (sdp.type === "answer" && isCaller) {
-            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            await cmmc_pc.setRemoteDescription(new RTCSessionDescription(sdp));
         }
     });
 }
 
-// 4. MUTE/CAMERA/SCREEN FUNCTIONS
-async function toggleVideo() {
-    document.getElementById('video-box').style.display = 'flex';
-    if (myStream.getVideoTracks().length === 0) {
-        const v = await navigator.mediaDevices.getUserMedia({ video: true });
-        myStream.addTrack(v.getVideoTracks()[0]);
-        pc.addTrack(v.getVideoTracks()[0], myStream);
-        document.getElementById('local-v').srcObject = myStream;
+// 4. CONTROLS
+function cmmc_mute() {
+    const t = cmmc_stream.getAudioTracks()[0];
+    t.enabled = !t.enabled;
+    document.getElementById('cmmc-m').style.background = t.enabled ? "#444" : "red";
+}
+
+async function cmmc_vid() {
+    document.getElementById('cmmc-v-box').style.display = 'flex';
+    if (cmmc_stream.getVideoTracks().length === 0) {
+        const vs = await navigator.mediaDevices.getUserMedia({ video: true });
+        cmmc_stream.addTrack(vs.getVideoTracks()[0]);
+        cmmc_pc.addTrack(vs.getVideoTracks()[0], cmmc_stream);
+        document.getElementById('cmmc-local').srcObject = cmmc_stream;
     } else {
-        const vt = myStream.getVideoTracks()[0];
+        const vt = cmmc_stream.getVideoTracks()[0];
         vt.enabled = !vt.enabled;
-        document.getElementById('cam-btn').style.background = vt.enabled ? "#333" : "red";
+        document.getElementById('cmmc-v').style.background = vt.enabled ? "#444" : "red";
     }
 }
 
-async function startScreenShare(target) {
-    const sc = await navigator.mediaDevices.getDisplayMedia({ video: true });
-    const track = sc.getVideoTracks()[0];
-    const sender = pc.getSenders().find(s => s.track.kind === 'video');
-    if (sender) sender.replaceTrack(track);
-    document.getElementById('local-v').srcObject = sc;
-    }
-    </script>
+async function cmmc_share(target) {
+    const ss = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const st = ss.getVideoTracks()[0];
+    const sender = cmmc_pc.getSenders().find(s => s.track.kind === 'video');
+    if (sender) sender.replaceTrack(st);
+    document.getElementById('cmmc-local').srcObject = ss;
+}
+
+// Run Badge System
+setTimeout(cmmc_startBadge, 3000);
+</script>
 </body>
 </html>

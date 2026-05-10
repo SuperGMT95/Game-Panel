@@ -1140,6 +1140,195 @@ db.ref("calls/" + activeUser).on("value", (snap) => {
         }
     }
 });
+    // --- COREMMC SOUND NOTIFICATION MODULE ---
+
+// 1. Audio Element Create Karna (Professional Chat Pop Sound)
+const chatNotificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
+
+// 2. DM Messages par Sound Trigger Karna
+function enableNotificationSound() {
+    // Ye listener check karega ki dms path mein koi badlav hua hai ya nahi
+    db.ref("dms").on("child_added", (snapshot) => {
+        // Sirf tab sound bajega jab window load ho chuki ho aur message kisi aur ne bheja ho
+        const lastChat = snapshot.key;
+        
+        // Is chat ID ke andar ke aakhri message ko track karna
+        db.ref("dms/" + lastChat).limitToLast(1).on("child_added", (msgSnap) => {
+            const msgData = msgSnap.val();
+            
+            // Logic: Agar message meri taraf se nahi hai, toh sound bajao
+            if (msgData.from !== activeUser) {
+                // Browser policies ki wajah se sound play karne ke liye user interaction zaroori hai
+                chatNotificationSound.play().catch(e => console.log("Sound play blocked until user clicks once on page."));
+            }
+        });
+    });
+}
+
+// 3. System ko start karna
+enableNotificationSound();
+    // --- COREMMC DM NOTIFICATION BADGE MODULE ---
+
+// 1. Badge Element ko DM Tab par add karna
+setTimeout(() => {
+    const dmTab = document.querySelector('button[onclick="showTab(\'dm\')"]');
+    if (dmTab && !document.getElementById('dm-badge')) {
+        dmTab.style.position = 'relative';
+        dmTab.innerHTML += `
+            <span id="dm-badge" style="
+                display: none;
+                position: absolute;
+                top: -5px;
+                right: 2px;
+                background: #e74c3c;
+                color: white;
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 50%;
+                font-weight: bold;
+                border: 2px solid #161b22;
+                box-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
+            ">0</span>`;
+    }
+}, 2000);
+
+let unreadCount = 0;
+
+// 2. Unread Messages ko Track karna
+function trackUnreadDMs() {
+    db.ref("dms").on("child_added", (snapshot) => {
+        const chatID = snapshot.key;
+        
+        // Agar main is chat ka hissa hoon toh naye messages check karo
+        if (chatID.includes(activeUser)) {
+            db.ref("dms/" + chatID).limitToLast(1).on("child_added", (msgSnap) => {
+                const data = msgSnap.val();
+                
+                // Agar message doosre ne bheja hai aur main abhi DM tab par nahi hoon
+                const currentTab = document.querySelector('.chat-tab[style*="display: flex"]')?.id;
+                
+                if (data.from !== activeUser && currentTab !== 'tab-dm') {
+                    unreadCount++;
+                    updateBadgeUI();
+                }
+            });
+        }
+    });
+}
+
+// 3. Badge UI Update karna
+function updateBadgeUI() {
+    const badge = document.getElementById('dm-badge');
+    if (badge) {
+        if (unreadCount > 0) {
+            badge.innerText = unreadCount > 9 ? "9+" : unreadCount;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// 4. DM Tab par click karte hi Badge clear karna
+const originalShowTab = showTab;
+showTab = function(tabName) {
+    if (tabName === 'dm') {
+        unreadCount = 0;
+        updateBadgeUI();
+    }
+    originalShowTab(tabName);
+};
+
+// Start tracking
+trackUnreadDMs();
+    // --- COREMMC REAL-TIME VOICE BRIDGE (WebRTC Audio Fix) ---
+
+let localStream;
+let peerConnection;
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+// 1. Microphone Access aur Audio Stream chalu karna
+async function setupVoiceChat() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("Microphone access granted.");
+    } catch (err) {
+        alert("Microphone access denied! Please allow mic to speak.");
+    }
+}
+
+// 2. Call Accept hone par Audio connect karna
+async function connectAudio(targetUser, isCaller) {
+    await setupVoiceChat();
+    peerConnection = new RTCPeerConnection(rtcConfig);
+
+    // Local stream add karna
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    // Remote stream receive karna
+    peerConnection.ontrack = (event) => {
+        const remoteAudio = new Audio();
+        remoteAudio.srcObject = event.streams[0];
+        remoteAudio.play();
+    };
+
+    if (isCaller) {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(offer));
+    }
+
+    // Signaling listener for WebRTC
+    db.ref(`calls/${activeUser}/signal`).on("value", async (snap) => {
+        const signal = snap.val();
+        if (!signal) return;
+        const data = JSON.parse(signal);
+
+        if (data.type === "offer" && !isCaller) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(answer));
+        } else if (data.type === "answer" && isCaller) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+        }
+    });
+}
+
+// 3. Purane showCallingScreen ko override karna (Accept button logic upgrade)
+const originalShowCallingScreen = showCallingScreen;
+showCallingScreen = function(user, type) {
+    originalShowCallingScreen(user, type);
+    
+    // Accept button ko live audio se connect karna
+    const overlay = document.getElementById('call-overlay');
+    const acceptBtn = overlay.querySelector('button[style*="background:#2ecc71"]');
+    
+    if (acceptBtn) {
+        acceptBtn.onclick = async () => {
+            await connectAudio(user, false);
+            acceptBtn.innerText = "Connected 🟢";
+            acceptBtn.disabled = true;
+        };
+    }
+
+    if (type === 'outgoing') {
+        connectAudio(user, true);
+    }
+};
+
+// 4. Call End hone par Mic band karna
+function endCall(targetUser) {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    if (peerConnection) {
+        peerConnection.close();
+    }
+    db.ref(`calls/${activeUser}`).remove();
+    db.ref(`calls/${targetUser}`).remove();
+    document.getElementById('call-overlay')?.remove();
+}
 </script>
 </body>
 </html>

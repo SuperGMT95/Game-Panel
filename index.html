@@ -1048,6 +1048,98 @@ setTimeout(() => {
         inputBar.prepend(btn);
     }
 }, 1500);
+    // --- COREMMC ULTIMATE FIX: DM PERSISTENCE, CALL & IMAGE BUTTONS ---
+
+// 1. DM SEND FUNCTION FIX (Preventing Auto-Back)
+function sendPrivateMsg(targetUser) {
+    const input = document.getElementById('dm-input-field');
+    const text = input.value.trim();
+    if(!text) return;
+
+    const chatID = [activeUser, targetUser].sort().join("_");
+    db.ref("dms/" + chatID).push().set({
+        from: activeUser,
+        message: text,
+        timestamp: Date.now()
+    });
+    
+    input.value = ""; // Sirf text clear hoga, window "Back" nahi hogi
+}
+
+// 2. OPEN DM WINDOW (With Call Button in Header)
+function openPrivateChat(targetUser) {
+    const dmArea = document.getElementById('dm-list');
+    dmArea.innerHTML = `
+        <div style="background:#161b22; padding:12px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+            <button onclick="showTab('dm')" style="background:none; border:none; color:#3498db; cursor:pointer; font-weight:bold;">< Back</button>
+            <b style="color:#2ecc71; font-size:16px;">${targetUser}</b>
+            <button onclick="startCall('${targetUser}')" style="background:#2ecc71; border:none; color:white; padding:5px 12px; border-radius:15px; font-size:12px; cursor:pointer; font-weight:bold;">📞 Call</button>
+        </div>
+        <div id="private-msgs" style="height:340px; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px; background:#0d1117;"></div>
+        <div style="padding:12px; display:flex; gap:8px; border-top:1px solid #333; background:#161b22;">
+            <button onclick="sendPrivateImage('${targetUser}')" style="background:#3498db; border:none; padding:8px; border-radius:8px; cursor:pointer; color:white;">🖼️</button>
+            <input type="text" id="dm-input-field" placeholder="Type message..." style="flex:1; padding:10px; background:#0d1117; border:1px solid #444; color:white; border-radius:8px; outline:none;">
+            <button onclick="sendPrivateMsg('${targetUser}')" style="background:#2ecc71; border:none; color:white; padding:5px 15px; border-radius:8px; font-weight:bold; cursor:pointer;">Send</button>
+        </div>
+    `;
+
+    // Messages Real-time Listener
+    const chatID = [activeUser, targetUser].sort().join("_");
+    db.ref("dms/" + chatID).on("value", (snap) => {
+        const msgBox = document.getElementById('private-msgs');
+        if(!msgBox) return;
+        msgBox.innerHTML = "";
+        snap.forEach(child => {
+            const data = child.val();
+            const isMe = data.from === activeUser;
+            msgBox.innerHTML += `
+                <div style="align-self:${isMe?'flex-end':'flex-start'}; background:${isMe?'#3498db':'#21262d'}; color:white; padding:10px 14px; border-radius:15px; max-width:75%; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">
+                    ${data.message}
+                </div>`;
+        });
+        msgBox.scrollTop = msgBox.scrollHeight;
+    });
+
+    // Enter key support for DM
+    document.getElementById('dm-input-field').addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') sendPrivateMsg(targetUser);
+    });
+}
+
+// 3. PRIVATE IMAGE UPLOADER
+function sendPrivateImage(targetUser) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 1048576) return alert("Image size must be less than 1MB!");
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const imgHtml = `<img src="${event.target.result}" style="width:100%; border-radius:8px; cursor:pointer;" onclick="window.open(this.src)">`;
+            const chatID = [activeUser, targetUser].sort().join("_");
+            db.ref("dms/" + chatID).push().set({
+                from: activeUser,
+                message: imgHtml,
+                timestamp: Date.now()
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+    fileInput.click();
+}
+
+// 4. CALL NOTIFICATION FIX (Ensuring UI pops up for Receiver)
+db.ref("calls/" + activeUser).on("value", (snap) => {
+    const callData = snap.val();
+    if (callData && callData.status === "ringing") {
+        if(!document.getElementById('call-overlay')) {
+            showCallingScreen(callData.caller, "incoming");
+        }
+    }
+});
 </script>
 </body>
 </html>

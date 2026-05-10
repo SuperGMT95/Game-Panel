@@ -1329,217 +1329,137 @@ function endCall(targetUser) {
     db.ref(`calls/${targetUser}`).remove();
     document.getElementById('call-overlay')?.remove();
 }
-    // --- COREMMC PRO VOICE & MULTITASKING MODULE ---
+   // --- COREMMC ULTIMATE RECOVERY CODE (CALL + SCREEN + BADGE) ---
 
-let remoteAudio = new Audio();
-remoteAudio.autoplay = true;
-
-// 1. CALL UI FIX (Floating Bar for Multitasking)
-function showCallingScreen(user, type) {
-    const existing = document.getElementById('call-overlay');
-    if(existing) existing.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'call-overlay';
-    // Isse call screen upar ek choti patti (bar) ban jayegi, poori screen block nahi hogi
-    overlay.style = "position:fixed; top:10px; left:50%; transform:translateX(-50%); width:90%; max-width:400px; background:#1c2128; z-index:30000; display:flex; align-items:center; justify-content:space-between; color:white; padding:10px 15px; border-radius:15px; border:2px solid #2ecc71; box-shadow:0 10px 30px rgba(0,0,0,0.5);";
-    
-    overlay.innerHTML = `
-        <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:35px; height:35px; background:#3498db; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px;">👤</div>
-            <div>
-                <div style="font-size:12px; color:#888;">${type === 'incoming' ? 'Incoming...' : 'Calling...'}</div>
-                <div style="font-weight:bold; color:#2ecc71;">${user}</div>
-            </div>
-        </div>
-        <div style="display:flex; gap:10px;">
-            ${type === 'incoming' ? `<button id="accept-call-btn" style="background:#2ecc71; border:none; color:white; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer;">Accept</button>` : ''}
-            <button onclick="endCall('${user}')" style="background:#e74c3c; border:none; color:white; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer;">End</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    if (type === 'incoming') {
-        document.getElementById('accept-call-btn').onclick = () => connectAudio(user, false);
-    } else {
-        connectAudio(user, true);
-    }
-}
-
-// 2. AUDIO STREAM FIX (Ensuring voice plays)
-async function connectAudio(targetUser, isCaller) {
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        peerConnection = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        peerConnection.ontrack = (event) => {
-            console.log("Remote stream received");
-            remoteAudio.srcObject = event.streams[0];
-            // Browser policy fix: play() explicitly call karna padta hai
-            remoteAudio.play().catch(e => console.error("Audio play failed:", e));
-        };
-
-        // ICE Candidate handling (Connection pakka karne ke liye)
-        peerConnection.onicecandidate = (e) => {
-            if (e.candidate) {
-                db.ref(`calls/${targetUser}/ice`).push(JSON.stringify(e.candidate));
-            }
-        };
-
-        db.ref(`calls/${activeUser}/ice`).on("child_added", (snap) => {
-            const cand = JSON.parse(snap.val());
-            peerConnection.addIceCandidate(new RTCIceCandidate(cand));
-        });
-
-        if (isCaller) {
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(offer));
-        }
-
-        db.ref(`calls/${activeUser}/signal`).on("value", async (snap) => {
-            const signal = snap.val();
-            if (!signal) return;
-            const data = JSON.parse(signal);
-            if (data.type === "offer" && !isCaller) {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(answer));
-            } else if (data.type === "answer" && isCaller) {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-            }
-        });
-        
-        if(!isCaller) document.getElementById('accept-call-btn').innerText = "Live 🟢";
-
-    } catch (err) {
-        alert("Mic Error: " + err.message);
-    }
-}
-
-// 3. CALL END & CLEANUP
-function endCall(targetUser) {
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    if (peerConnection) peerConnection.close();
-    db.ref(`calls/${activeUser}`).remove();
-    db.ref(`calls/${targetUser}`).remove();
-    document.getElementById('call-overlay')?.remove();
-    remoteAudio.srcObject = null;
-}
-    // --- COREMMC ALL-IN-ONE SECURE MODULE ---
-// Firebase Configuration from your screenshot
-const firebaseConfig = {
-    apiKey: "AIzaSyDZGj9ivM224fKZjt8d9lSeNhcb-_IPjE",
-    authDomain: "coremmc-chat.firebaseapp.com",
-    databaseURL: "https://coremmc-chat-default-rtdb.firebaseio.com",
-    projectId: "coremmc-chat",
-    storageBucket: "coremmc-chat.appspot.com",
-    messagingSenderId: "215541867812",
-    appId: "1:215541867812:web:0c9e1fcd21ee0a040effb1"
-};
-
-// Global Variables
-let localStream, peerConnection, screenStream;
-let unreadCount = 0;
-const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-
-// 1. DM NOTIFICATION BADGE (As per your photo request)
-function updateDMNotifications() {
-    db.ref("dms").on("value", (snapshot) => {
-        let count = 0;
-        snapshot.forEach(chat => {
+// 1. DM RED BADGE LOGIC (As per your request)
+let lastCheckedCount = 0;
+function startBadgeSystem() {
+    db.ref("dms").on("value", (snap) => {
+        let totalUnread = 0;
+        snap.forEach(chat => {
             if (chat.key.includes(activeUser)) {
                 chat.forEach(msg => {
                     if (msg.val().from !== activeUser && !msg.val().seen) {
-                        count++;
+                        totalUnread++;
                     }
                 });
             }
         });
-        unreadCount = count;
-        const badge = document.getElementById('dm-badge') || createBadge();
-        badge.innerText = unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "";
-        badge.style.display = unreadCount > 0 ? "block" : "none";
+        updateBadgeUI(totalUnread);
     });
 }
 
-function createBadge() {
-    const dmTab = document.querySelector('button[onclick*="dm"]');
-    if(!dmTab) return;
-    dmTab.style.position = 'relative';
-    const b = document.createElement('span');
-    b.id = 'dm-badge';
-    b.style = "position:absolute; top:-5px; right:-2px; background:#e74c3c; color:white; font-size:10px; padding:2px 6px; border-radius:50%; font-weight:bold; border:2px solid #161b22;";
-    dmTab.appendChild(b);
-    return b;
+function updateBadgeUI(count) {
+    let badge = document.getElementById('dm-count-badge');
+    if (!badge) {
+        const dmTab = document.querySelector('button[onclick*="dm"]');
+        if (dmTab) {
+            dmTab.style.position = 'relative';
+            badge = document.createElement('span');
+            badge.id = 'dm-count-badge';
+            badge.style = "position:absolute; top:-5px; right:-2px; background:red; color:white; font-size:10px; padding:2px 6px; border-radius:50%; font-weight:bold; border:2px solid #161b22; display:none;";
+            dmTab.appendChild(badge);
+        }
+    }
+    if (badge) {
+        badge.innerText = count > 9 ? "9+" : count;
+        badge.style.display = count > 0 ? "block" : "none";
+    }
 }
 
-// 2. FIXED DM WINDOW (No Auto-Back, Professional View)
-function openPrivateChat(targetUser) {
-    const dmArea = document.getElementById('dm-list');
-    dmArea.innerHTML = `
-        <div style="background:#161b22; padding:12px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-            <button onclick="location.reload()" style="background:none; border:none; color:#3498db; cursor:pointer;"> Back</button>
-            <b style="color:#2ecc71;">${targetUser}</b>
-            <button onclick="startCall('${targetUser}')" style="background:#2ecc71; border:none; color:white; padding:5px 12px; border-radius:15px; cursor:pointer;">📞 Call</button>
-        </div>
-        <div id="private-msgs" style="height:350px; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px; background:#0d1117;"></div>
-        <div style="padding:12px; display:flex; gap:8px; border-top:1px solid #333; background:#161b22;">
-            <button onclick="sendMedia('${targetUser}')" style="background:#3498db; border:none; padding:8px; border-radius:8px; cursor:pointer;">🖼️</button>
-            <input type="text" id="dm-input" placeholder="Type DM..." style="flex:1; padding:10px; background:#0d1117; border:1px solid #444; color:white; border-radius:8px;">
-            <button onclick="submitDM('${targetUser}')" style="background:#2ecc71; border:none; color:white; padding:8px 15px; border-radius:8px;">Send</button>
-        </div>`;
+// 2. CALLING & SCREEN SHARE ENGINE
+let pc;
+let myStream;
 
-    const chatID = [activeUser, targetUser].sort().join("_");
-    db.ref("dms/" + chatID).on("value", (snap) => {
-        const box = document.getElementById('private-msgs');
-        if(!box) return; box.innerHTML = "";
-        snap.forEach(c => {
-            const d = c.val(); const isMe = d.from === activeUser;
-            box.innerHTML += `<div style="align-self:${isMe?'flex-end':'flex-start'}; background:${isMe?'#3498db':'#21262d'}; color:white; padding:10px; border-radius:12px; max-width:80%;">${d.message}</div>`;
-            if(!isMe) db.ref(`dms/${chatID}/${c.key}`).update({seen: true});
-        });
-        box.scrollTop = box.scrollHeight;
+async function startCall(targetUser) {
+    // UI Create Karna
+    const callUI = document.createElement('div');
+    callUI.id = 'active-call-bar';
+    callUI.style = "position:fixed; top:10px; left:50%; transform:translateX(-50%); width:95%; max-width:450px; background:#1c2128; z-index:100000; padding:15px; border-radius:20px; border:2px solid #3498db; color:white; display:flex; flex-direction:column; gap:10px; box-shadow:0 10px 50px #000;";
+    callUI.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b>📞 Talking to: <span style="color:#2ecc71;">${targetUser}</span></b>
+            <button onclick="location.reload()" style="background:#e74c3c; border:none; color:white; padding:5px 15px; border-radius:10px; cursor:pointer; font-weight:bold;">End</button>
+        </div>
+        <div style="display:flex; justify-content:center; gap:15px;">
+            <button onclick="toggleMic()" id="m-btn" style="background:#444; border:none; padding:10px; border-radius:50%; cursor:pointer;">🎙️</button>
+            <button onclick="toggleCam()" id="c-btn" style="background:#444; border:none; padding:10px; border-radius:50%; cursor:pointer;">📷</button>
+            <button onclick="shareMyScreen('${targetUser}')" style="background:#3498db; border:none; padding:10px; border-radius:10px; cursor:pointer; font-size:12px; color:white;">🖥️ Share Screen</button>
+        </div>
+        <div id="video-grid" style="display:none; gap:5px; margin-top:5px;">
+            <video id="me" autoplay muted playsinline style="width:48%; border-radius:10px; background:#000;"></video>
+            <video id="you" autoplay playsinline style="width:48%; border-radius:10px; background:#000;"></video>
+        </div>
+    `;
+    document.body.appendChild(callUI);
+
+    // WebRTC Connection Setup
+    pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    
+    myStream.getTracks().forEach(track => pc.addTrack(track, myStream));
+    
+    pc.ontrack = (e) => {
+        const remoteVid = document.getElementById('you');
+        if(remoteVid) remoteVid.srcObject = e.streams[0];
+    };
+
+    // Signaling Offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    db.ref(`calls/${targetUser}/signal`).set(JSON.stringify(offer));
+
+    // ICE Candidates
+    pc.onicecandidate = (e) => {
+        if(e.candidate) db.ref(`calls/${targetUser}/ice`).push(JSON.stringify(e.candidate));
+    };
+
+    db.ref(`calls/${activeUser}/ice`).on("child_added", (s) => {
+        pc.addIceCandidate(new RTCIceCandidate(JSON.parse(s.val())));
+    });
+
+    db.ref(`calls/${activeUser}/signal`).on("value", async (s) => {
+        const sig = s.val();
+        if(sig && JSON.parse(sig).type === "answer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig)));
+        }
     });
 }
 
-function submitDM(user) {
-    const val = document.getElementById('dm-input').value;
-    if(!val) return;
-    const chatID = [activeUser, user].sort().join("_");
-    db.ref("dms/" + chatID).push().set({from: activeUser, message: val, timestamp: Date.now(), seen: false});
-    document.getElementById('dm-input').value = "";
+// 3. CONTROLS: MIC, CAM, SCREEN
+function toggleMic() {
+    const audioTrack = myStream.getAudioTracks()[0];
+    audioTrack.enabled = !audioTrack.enabled;
+    document.getElementById('m-btn').style.background = audioTrack.enabled ? "#444" : "red";
+    document.getElementById('m-btn').innerText = audioTrack.enabled ? "🎙️" : "🔇";
 }
 
-// 3. ULTIMATE CALL BAR (Video, Screen Share, Mute)
-async function startCall(user) {
-    const overlay = document.createElement('div');
-    overlay.id = 'call-panel';
-    overlay.style = "position:fixed; top:10px; left:50%; transform:translateX(-50%); width:95%; max-width:450px; background:#1c2128; z-index:100000; padding:15px; border-radius:20px; border:2px solid #3498db; color:white;";
-    overlay.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <b>Calling ${user}</b>
-            <span id="duration">00:00</span>
-        </div>
-        <div style="display:flex; justify-content:center; gap:10px;">
-            <button onclick="toggleMic()" style="padding:10px; border-radius:50%; border:none; background:#444; cursor:pointer;">🎙️</button>
-            <button onclick="toggleCam()" style="padding:10px; border-radius:50%; border:none; background:#444; cursor:pointer;">📷</button>
-            <button onclick="toggleShare('${user}')" style="padding:10px; border-radius:50%; border:none; background:#3498db; cursor:pointer;">🖥️</button>
-            <button onclick="location.reload()" style="padding:10px 20px; border-radius:10px; border:none; background:#e74c3c; color:white; cursor:pointer; font-weight:bold;">End</button>
-        </div>
-        <div id="v-preview" style="display:none; margin-top:10px; gap:5px;">
-            <video id="l-vid" autoplay muted style="width:48%; border-radius:8px; background:#000;"></video>
-            <video id="r-vid" autoplay style="width:48%; border-radius:8px; background:#000;"></video>
-        </div>`;
-    document.body.appendChild(overlay);
-    initWebRTC(user, true);
+async function toggleCam() {
+    const videoGrid = document.getElementById('video-grid');
+    videoGrid.style.display = 'flex';
+    if(myStream.getVideoTracks().length === 0) {
+        const vStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const vTrack = vStream.getVideoTracks()[0];
+        myStream.addTrack(vTrack);
+        pc.addTrack(vTrack, myStream);
+        document.getElementById('me').srcObject = myStream;
+    } else {
+        const vt = myStream.getVideoTracks()[0];
+        vt.enabled = !vt.enabled;
+        document.getElementById('c-btn').style.background = vt.enabled ? "#444" : "red";
+    }
 }
 
-// Initialization Logic
-setTimeout(() => { updateDMNotifications(); }, 3000);
+async function shareMyScreen(user) {
+    const scStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const scTrack = scStream.getVideoTracks()[0];
+    const sender = pc.getSenders().find(s => s.track.kind === 'video');
+    if(sender) sender.replaceTrack(scTrack);
+    document.getElementById('me').srcObject = scStream;
+}
+
+// Launch Badge System
+setTimeout(startBadgeSystem, 2000);
     </script>
 </body>
 </html>

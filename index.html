@@ -919,13 +919,38 @@ function logout() {
 
 // Enter Key Support
 document.getElementById('public-input')?.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendPublicMsg(); });
-</script>
-    // --- FIXED DM VIEW & CALL FUNCTION ---
+    // --- COREMMC UPGRADED MODULE: IMAGE, CALL & DM FIX ---
 
-// 1. DM History Load karne ka sahi tarika (Clickable)
+// 1. Image Upload Function (Firebase Storage + Database)
+async function sendImage() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        alert("Uploading image... please wait.");
+        // Note: Simple way to send image as Base64 for instant use
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const base64Image = event.target.result;
+            db.ref("public_messages").push().set({
+                user: activeUser,
+                message: `<img src="${base64Image}" style="width:100%; border-radius:10px; margin-top:5px;" onclick="window.open(this.src)">`,
+                timestamp: Date.now(),
+                isImage: true
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+    fileInput.click();
+}
+
+// 2. Fixed DM View (Ab "Click to View" work karega)
 function loadDMHistory() {
     const list = document.getElementById('dm-list');
-    list.innerHTML = "<p style='color:#555; text-align:center;'>Loading your chats...</p>";
+    if(!list) return;
     
     db.ref("dms").on("value", (snapshot) => {
         list.innerHTML = "";
@@ -934,26 +959,24 @@ function loadDMHistory() {
             if (chat.key.includes(activeUser)) {
                 found = true;
                 const otherUser = chat.key.replace(activeUser, "").replace("_", "");
-                
-                // Card banaya hai jo click karne par DM box khol dega
                 list.innerHTML += `
-                    <div onclick="openPrivateChat('${otherUser}')" style="background: #1c2128; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #3498db; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center;">
+                    <div onclick="openPrivateChat('${otherUser}')" style="background: #1c2128; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #3498db; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <span style="color: #2ecc71; font-weight: bold; display: block;">👤 ${otherUser}</span>
-                            <span style="font-size: 11px; color: #888;">Click to view messages</span>
+                            <span style="color: #2ecc71; font-weight: bold;">👤 ${otherUser}</span>
+                            <div style="font-size: 11px; color: #888; margin-top:3px;">Click to view/reply</div>
                         </div>
-                        <button onclick="startCall('${otherUser}')" style="background: #3498db; border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 10px;">📞 Call</button>
+                        <button onclick="startCall('${otherUser}'); event.stopPropagation();" style="background: #2ecc71; border: none; color: white; padding: 8px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">📞 Call</button>
                     </div>`;
             }
         });
-        if(!found) list.innerHTML = "<p style='color:#555; text-align:center;'>No private chats yet.</p>";
+        if(!found) list.innerHTML = "<p style='color:#555; text-align:center; padding:20px;'>No private chats yet.</p>";
     });
 }
 
-// 2. DM kholne ka function
+// 3. Private Chat Opener (Reply System)
 function openPrivateChat(targetUser) {
-    let msg = prompt(`Chatting with ${targetUser}\nType your message:`, forwardData || "");
-    if (msg) {
+    const msg = prompt(`Chatting with ${targetUser}\n\nType your message or forward data:`, forwardData || "");
+    if (msg !== null && msg.trim() !== "") {
         const chatID = [activeUser, targetUser].sort().join("_");
         db.ref("dms/" + chatID).push().set({
             from: activeUser,
@@ -961,20 +984,37 @@ function openPrivateChat(targetUser) {
             message: msg,
             timestamp: Date.now()
         });
-        alert("Reply Sent!");
-        forwardData = "";
+        alert("Message sent to " + targetUser);
+        forwardData = ""; 
     }
 }
 
-// 3. Hosting Inquiry Call Function
+// 4. Voice Call UI Function
 function startCall(targetUser) {
-    // Ye function check karega ki hosting inquiries ke liye call connect ho rahi hai
-    const confirmCall = confirm(`Do you want to start a voice call with ${targetUser} to discuss CoreMMC Hosting?`);
-    if(confirmCall) {
-        alert(`Connecting to ${targetUser}...\n[Call Status: Voice bridge initializing]`);
-        // Note: Real voice call ke liye WebRTC lagta hai, abhi ye alert signal dega
-    }
+    const callContainer = document.createElement('div');
+    callContainer.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:sans-serif;";
+    callContainer.innerHTML = `
+        <div style="width:120px; height:120px; background:#3498db; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:40px; margin-bottom:20px; border:4px solid #2ecc71; animation: pulse 1.5s infinite;">👤</div>
+        <h2 style="margin:0;">Calling ${targetUser}...</h2>
+        <p style="color:#2ecc71; margin-top:10px;">Discussing CoreMMC Hosting</p>
+        <button onclick="this.parentElement.remove()" style="margin-top:50px; background:#e74c3c; border:none; color:white; padding:15px 40px; border-radius:30px; font-weight:bold; cursor:pointer;">End Call</button>
+        <style>@keyframes pulse { 0% {box-shadow: 0 0 0 0px rgba(46, 204, 113, 0.4);} 70% {box-shadow: 0 0 0 20px rgba(46, 204, 113, 0);} 100% {box-shadow: 0 0 0 0px rgba(46, 204, 113, 0);} }</style>
+    `;
+    document.body.appendChild(callContainer);
 }
-</script> 
+
+// 5. Add Image Icon to UI (Button Injection)
+setTimeout(() => {
+    const inputArea = document.querySelector('#tab-home div[style*="padding: 10px"]');
+    if(inputArea && !document.getElementById('img-send-btn')) {
+        const imgBtn = document.createElement('button');
+        imgBtn.id = 'img-send-btn';
+        imgBtn.innerHTML = "🖼️";
+        imgBtn.onclick = sendImage;
+        imgBtn.style = "background: #3498db; border: none; padding: 10px; border-radius: 8px; color: white; cursor: pointer; margin-right: 5px;";
+        inputArea.insertBefore(imgBtn, inputArea.firstChild);
+    }
+}, 1000);
+</script>
 </body>
 </html>
